@@ -56,6 +56,7 @@ jobs:
           PRIVY_APP_ID=""
           PRIVY_CLIENT_ID=""
           ENABLE_ENTRY_GATEWAY_PROXY="true"
+          ZKPASSPORT_ONCHAIN_BIDS="true"
           ZKPASSPORT_POPUP_URL="$POPUP_URL"
           ZKPASSPORT_CREATE_POLICY_URL="$CREATE_POLICY_URL"
           EOF
