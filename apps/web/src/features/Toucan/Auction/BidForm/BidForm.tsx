@@ -39,6 +39,7 @@ import { AuctionProgressState } from '~/features/Toucan/Auction/store/types'
 import { useAuctionStore, useAuctionStoreActions } from '~/features/Toucan/Auction/store/useAuctionStore'
 import { getRequiredTestnetMode } from '~/features/Toucan/Shared/getRequiredTestnetMode'
 import { InlineAlertBanner } from '~/features/Toucan/Shared/InlineAlertBanner'
+import { useZkPassportGate } from '~/features/Toucan/ZkPassport/useZkPassportGate'
 
 const VerticalLineContainer = styled(Flex, {
   width: '100%',
@@ -82,6 +83,7 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
 
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [isKycInterstitialModalOpen, setIsKycInterstitialModalOpen] = useState(false)
+  const [isZkInterstitialModalOpen, setIsZkInterstitialModalOpen] = useState(false)
   const [isKycFailedModalOpen, setIsKycFailedModalOpen] = useState(false)
   const [showTokenWarningModal, setShowTokenWarningModal] = useState(false)
 
@@ -139,16 +141,25 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
     currentBlockNumber,
   })
 
+  const zkGate = useZkPassportGate({
+    chainId,
+    validationHook,
+    walletAddress: accountAddress,
+  })
+  const zkNeedsVerify = zkGate.isGated && isWalletConnected && !zkGate.isEligible
+
   const { showDisabledState, shouldShowWarningBanner, shouldDisableBidForm } = useBidFormWarningState({
     chainId,
     currency,
     auctionProgressState,
     userBids,
-    validationHook,
+    // A ZKPassport hook is resolved entirely on-chain, so it is neither an
+    // unsupported validation hook nor a verify-wallet backend concern.
+    validationHook: zkGate.isGated ? undefined : validationHook,
     // Only treat KYC as an unsupported-auction signal once a wallet is connected;
     // otherwise the disabled verify-wallet query is misread as an error and surfaces
     // the warning banner instead of the connect-wallet CTA on the action button.
-    validationError: isWalletConnected && kycStatus.isError,
+    validationError: !zkGate.isGated && isWalletConnected && kycStatus.isError,
   })
 
   const handleButtonPress = (): void => {
@@ -158,6 +169,10 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
     }
     if (requiredTestnetMode !== undefined) {
       dispatch(setIsTestnetModeEnabled(requiredTestnetMode))
+      return
+    }
+    if (zkNeedsVerify) {
+      setIsZkInterstitialModalOpen(true)
       return
     }
     if (kycStatus.canBid) {
@@ -177,16 +192,20 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
     if (needsTestnetModeSwitch) {
       return requiredTestnetMode ? t('toucan.action.enableTestnetMode') : t('toucan.action.disableTestnetMode')
     }
+    if (zkNeedsVerify) {
+      return t('toucan.zkpassport.verify')
+    }
     return (kycStatus.kycButtonLabel ?? showDisabledState)
       ? t('toucan.auction.bidForm.auctionConcluded')
       : t('toucan.bidForm.reviewBid')
   })()
 
   // The testnet-mode-switch CTA stays tappable regardless of the bid inputs, since switching mode is
-  // always a valid action and is a prerequisite to bidding at all.
+  // always a valid action and is a prerequisite to bidding at all. The same goes for the ZKPassport
+  // verify CTA: it opens the verification popup, so the bid inputs don't constrain it.
   const buttonDisabled =
     isGeoRestricted ||
-    (isWalletConnected && !needsTestnetModeSwitch
+    (isWalletConnected && !needsTestnetModeSwitch && !zkNeedsVerify
       ? submitState.isDisabled || !isAuctionInProgress || shouldDisableBidForm || kycStatus.kycButtonDisabled
       : false)
 
@@ -342,6 +361,17 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
         isOpen={isKycInterstitialModalOpen}
         onClose={() => setIsKycInterstitialModalOpen(false)}
         onContinue={kycStatus.onKycAction}
+      />
+      <KycInterstitialModal
+        isOpen={isZkInterstitialModalOpen}
+        onClose={() => setIsZkInterstitialModalOpen(false)}
+        onContinue={() => {
+          setIsZkInterstitialModalOpen(false)
+          zkGate.openVerify()
+        }}
+        providerName="ZKPassport"
+        providerTermsUrl="https://zkpassport.id/terms"
+        providerPrivacyUrl="https://zkpassport.id/privacy"
       />
       <KycFailedModal isOpen={isKycFailedModalOpen} onClose={() => setIsKycFailedModalOpen(false)} />
       {shouldShowTokenWarning && token && (
