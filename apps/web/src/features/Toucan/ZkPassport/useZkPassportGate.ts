@@ -1,9 +1,10 @@
+import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
-import type { EVMUniverseChainId, UniverseChainId } from 'uniswap/src/features/chains/types'
-import { useReadContract, useReadContracts } from 'wagmi'
+import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { assume0xAddress, zeroAddress } from '~/chains'
 import { gatedErc1155HookAbi, zkPassportAttestAbi } from '~/features/Toucan/ZkPassport/abi'
 import { ZKPASSPORT_ATTEST_REGISTRY, zkPassportVerifyUrl } from '~/features/Toucan/ZkPassport/config'
+import { getSessionlessPublicClient } from '~/features/Toucan/ZkPassport/sessionlessClient'
 
 export interface ZkPassportGate {
   /** The auction's validation hook gates on a ZKPassport credential */
@@ -24,6 +25,11 @@ export interface ZkPassportGate {
  * are the stock ERC-1155 surface (hook.erc1155()/tokenId(), then balanceOf),
  * so no vendor API is involved; the popup handles the actual verification and
  * posts back when a credential is minted, which refreshes the balance read.
+ *
+ * The reads go through the sessionless public client rather than the app's
+ * wagmi transport: the wagmi path is UniRPC, which 401s without a gateway
+ * session, and a wrong read failure here surfaces as a spurious
+ * "Auction not supported" banner on the bid form.
  */
 export function useZkPassportGate({
   chainId,
@@ -34,34 +40,37 @@ export function useZkPassportGate({
   validationHook?: string
   walletAddress?: string
 }): ZkPassportGate {
-  const evmChainId = chainId as EVMUniverseChainId | undefined
   const hookAddress = validationHook && validationHook !== zeroAddress ? assume0xAddress(validationHook) : undefined
 
-  const { data: hookViews, isLoading: isHookLoading } = useReadContracts({
-    contracts: [
-      {
-        address: hookAddress,
-        chainId: evmChainId,
-        abi: gatedErc1155HookAbi,
-        functionName: 'erc1155',
-      },
-      {
-        address: hookAddress,
-        chainId: evmChainId,
-        abi: gatedErc1155HookAbi,
-        functionName: 'tokenId',
-      },
-    ],
-    query: {
-      enabled: Boolean(hookAddress && chainId),
-      staleTime: Infinity,
-      retry: 1,
+  const { data: hookViews, isLoading: isHookLoading } = useQuery({
+    queryKey: ['zkpassport-hook-introspection', chainId, hookAddress],
+    queryFn: async () => {
+      if (!chainId || !hookAddress) {
+        throw new Error('chainId and hookAddress required')
+      }
+      const client = getSessionlessPublicClient(chainId)
+      const [registry, tokenId] = await Promise.all([
+        client.readContract({
+          address: hookAddress,
+          abi: gatedErc1155HookAbi,
+          functionName: 'erc1155',
+        }),
+        client.readContract({
+          address: hookAddress,
+          abi: gatedErc1155HookAbi,
+          functionName: 'tokenId',
+        }),
+      ])
+      return { registry, tokenId }
     },
+    enabled: Boolean(hookAddress && chainId),
+    staleTime: Infinity,
+    retry: 1,
   })
 
   const knownRegistry = chainId ? ZKPASSPORT_ATTEST_REGISTRY[chainId] : undefined
-  const hookRegistry = hookViews?.[0].result
-  const policyId = hookViews?.[1].result
+  const hookRegistry = hookViews?.registry
+  const policyId = hookViews?.tokenId
   const isGated = Boolean(
     knownRegistry &&
     hookRegistry &&
@@ -73,15 +82,20 @@ export function useZkPassportGate({
     data: balance,
     isLoading: isBalanceLoading,
     refetch: refetchBalance,
-  } = useReadContract({
-    address: isGated ? hookRegistry : undefined,
-    chainId: evmChainId,
-    abi: zkPassportAttestAbi,
-    functionName: 'balanceOf',
-    args: walletAddress && policyId !== undefined ? [assume0xAddress(walletAddress), policyId] : undefined,
-    query: {
-      enabled: Boolean(isGated && walletAddress && policyId !== undefined),
+  } = useQuery({
+    queryKey: ['zkpassport-credential-balance', chainId, hookRegistry, policyId?.toString(), walletAddress],
+    queryFn: async () => {
+      if (!chainId || !hookRegistry || policyId === undefined || !walletAddress) {
+        throw new Error('gate introspection and wallet required')
+      }
+      return getSessionlessPublicClient(chainId).readContract({
+        address: hookRegistry,
+        abi: zkPassportAttestAbi,
+        functionName: 'balanceOf',
+        args: [assume0xAddress(walletAddress), policyId],
+      })
     },
+    enabled: Boolean(isGated && chainId && walletAddress && policyId !== undefined),
   })
 
   useEffect(() => {

@@ -175,7 +175,10 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
       setIsZkInterstitialModalOpen(true)
       return
     }
-    if (kycStatus.canBid) {
+    // A ZKPassport-gated auction is validated by its on-chain hook, so the
+    // backend verify-wallet outcome (unreachable from third-party origins)
+    // must not block a bidder who already passed the zk gate.
+    if (zkGate.isGated || kycStatus.canBid) {
       handleReviewBidClick()
     } else if (kycStatus.onKycAction) {
       kycStatus.onKycAction()
@@ -206,7 +209,10 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
   const buttonDisabled =
     isGeoRestricted ||
     (isWalletConnected && !needsTestnetModeSwitch && !zkNeedsVerify
-      ? submitState.isDisabled || !isAuctionInProgress || shouldDisableBidForm || kycStatus.kycButtonDisabled
+      ? submitState.isDisabled ||
+        !isAuctionInProgress ||
+        shouldDisableBidForm ||
+        (!zkGate.isGated && kycStatus.kycButtonDisabled)
       : false)
 
   const shouldShowSwapBanner =
