@@ -10,12 +10,13 @@ export const ZKPASSPORT_POPUP_URL = (process.env.ZKPASSPORT_POPUP_URL ?? 'http:/
  * dropdown and to recognize auction validation hooks that gate on it.
  */
 export const ZKPASSPORT_ATTEST_REGISTRY: Partial<Record<UniverseChainId, `0x${string}`>> = {
-  [UniverseChainId.Sepolia]: '0x0FF14Da5e8A6AE442772Fc810BA815A73240d566',
+  [UniverseChainId.Sepolia]: (process.env.ZKPASSPORT_ATTEST_REGISTRY_SEPOLIA ??
+    '0x2a615a175439b9eb0004b924aBdD2B4c7a871f11') as `0x${string}`,
 }
 
 /** Block each registry was deployed at, bounding PolicyCreated log scans. */
 export const ZKPASSPORT_ATTEST_DEPLOY_BLOCK: Partial<Record<UniverseChainId, bigint>> = {
-  [UniverseChainId.Sepolia]: 11584016n,
+  [UniverseChainId.Sepolia]: BigInt(process.env.ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA ?? 11625471),
 }
 
 /** Link for creators who want a policy beyond the ready-made list. */

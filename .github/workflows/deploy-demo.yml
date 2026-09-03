@@ -1,7 +1,11 @@
 # Builds the web app and ships it to Vercel as a prebuilt deployment.
 # Lives only on the ZKPassport demo branch; requires repo secrets
 # VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID and repo variables
-# ZKPASSPORT_POPUP_URL, ZKPASSPORT_CREATE_POLICY_URL.
+# ZKPASSPORT_POPUP_URL, ZKPASSPORT_CREATE_POLICY_URL. Optional repo
+# variables ZKPASSPORT_ATTEST_REGISTRY_SEPOLIA and
+# ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA override the registry baked
+# into apps/web ZkPassport/config.ts without a commit (set both, then
+# re-run this workflow).
 name: Deploy demo to Vercel
 
 on:
@@ -50,6 +54,8 @@ jobs:
         env:
           POPUP_URL: ${{ vars.ZKPASSPORT_POPUP_URL }}
           CREATE_POLICY_URL: ${{ vars.ZKPASSPORT_CREATE_POLICY_URL }}
+          ATTEST_REGISTRY: ${{ vars.ZKPASSPORT_ATTEST_REGISTRY_SEPOLIA }}
+          ATTEST_DEPLOY_BLOCK: ${{ vars.ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA }}
         run: |
           cat > .env.override <<EOF
           WALLETCONNECT_PROJECT_ID="walletconnect_project_id"
@@ -61,6 +67,14 @@ jobs:
           ZKPASSPORT_POPUP_URL="$POPUP_URL"
           ZKPASSPORT_CREATE_POLICY_URL="$CREATE_POLICY_URL"
           EOF
+          # An empty define would win over the ?? fallback in config.ts, so
+          # only write the registry override when the variable is set.
+          if [ -n "$ATTEST_REGISTRY" ]; then
+            echo "ZKPASSPORT_ATTEST_REGISTRY_SEPOLIA=\"$ATTEST_REGISTRY\"" >> .env.override
+          fi
+          if [ -n "$ATTEST_DEPLOY_BLOCK" ]; then
+            echo "ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA=\"$ATTEST_DEPLOY_BLOCK\"" >> .env.override
+          fi
 
       - name: Build
         env:
