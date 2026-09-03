@@ -19,6 +19,7 @@ import type { EVMAccountDetails } from 'uniswap/src/features/wallet/types/Accoun
 import { isSignerMnemonicAccountDetails } from 'uniswap/src/features/wallet/types/AccountDetails'
 import { logger } from 'utilities/src/logger/logger'
 import { useEvent } from 'utilities/src/react/hooks'
+import { resolveLaunchedAuctionAddress } from '~/features/Toucan/ZkPassport/launchedAuctionAddress'
 import { useAuctionLaunch } from '~/hooks/useAuctionLaunch'
 import { LaunchProgressStep } from '~/pages/Liquidity/CreateAuction/components/LaunchAuctionProgressIndicator'
 import type { CreateAuctionSubmitResult } from '~/pages/Liquidity/CreateAuction/hooks/useCreateAuctionSubmit'
@@ -273,13 +274,20 @@ export function useLaunchAuctionFlow({
     void prepareLaunch()
   })
 
-  const navigateToAuction = useEvent(() => {
+  const navigateToAuction = useEvent(async () => {
     if (!launchSuccess) {
       return
     }
     const chainUrlParam = getChainUrlParam(chainId)
     if (chainUrlParam) {
-      navigate(`/explore/auctions/${chainUrlParam}/${launchSuccess.auctionAddress}`)
+      // launchSuccess.auctionAddress is a build-time prediction that can
+      // diverge from the deployed address; prefer the receipt's ground truth.
+      const auctionAddress = await resolveLaunchedAuctionAddress({
+        chainId,
+        hash: launchSuccess.hash,
+        predictedAddress: launchSuccess.auctionAddress,
+      })
+      navigate(`/explore/auctions/${chainUrlParam}/${auctionAddress}`)
     }
   })
 

@@ -78,6 +78,13 @@ vi.mock('~/utils/params/chainParams', async (importOriginal) => ({
   getChainUrlParam: () => 'ethereum',
 }))
 
+// The receipt resolver fetches over the network; pass the prediction through by default so the
+// navigation expectations stay meaningful. One test overrides it to assert the receipt wins.
+const mockResolveLaunchedAuctionAddress = vi.fn(async (args: { predictedAddress: string }) => args.predictedAddress)
+vi.mock('~/features/Toucan/ZkPassport/launchedAuctionAddress', () => ({
+  resolveLaunchedAuctionAddress: (args: { predictedAddress: string }) => mockResolveLaunchedAuctionAddress(args),
+}))
+
 // Drives the launch transaction record so we can exercise confirmed vs. pending and explorer-hash paths.
 type MockLaunchRecord = {
   status: TransactionStatus
@@ -375,14 +382,40 @@ describe('useLaunchAuctionFlow', () => {
     expect(result.current.isSuccessModalOpen).toBe(true)
     expect(result.current.isReviewModalVisible).toBe(false)
 
-    act(() => result.current.handleViewAuction())
+    // Navigation resolves the deployed address from the receipt first, so it lands a microtask later.
+    await act(async () => {
+      result.current.handleViewAuction()
+    })
     expect(mockNavigate).toHaveBeenCalledWith('/explore/auctions/ethereum/0xAuction')
 
     // The launch is already confirmed, so dismissing the modal also goes straight to the auction.
     mockNavigate.mockClear()
-    act(() => result.current.handleCloseSuccessModal())
+    await act(async () => {
+      result.current.handleCloseSuccessModal()
+    })
     expect(result.current.isSuccessModalOpen).toBe(false)
     expect(mockNavigate).toHaveBeenCalledWith('/explore/auctions/ethereum/0xAuction')
+  })
+
+  it('navigates to the receipt-derived address when it differs from the prediction', async () => {
+    const { result } = setup({ onLaunch: vi.fn().mockResolvedValue(submitResult([tx()])) })
+
+    await openAndPrepare(result)
+    await act(async () => {
+      await result.current.handleLaunchToken()
+    })
+    act(() => lastSubmit?.onSuccess('0xlaunch'))
+
+    mockResolveLaunchedAuctionAddress.mockResolvedValueOnce('0xDeployedAuction')
+    await act(async () => {
+      result.current.handleViewAuction()
+    })
+    expect(mockResolveLaunchedAuctionAddress).toHaveBeenCalledWith({
+      chainId: 1,
+      hash: '0xlaunch',
+      predictedAddress: '0xAuction',
+    })
+    expect(mockNavigate).toHaveBeenCalledWith('/explore/auctions/ethereum/0xDeployedAuction')
   })
 
   it('defers navigation when the launch is still pending on dismiss, then redirects once it confirms', async () => {
@@ -401,9 +434,12 @@ describe('useLaunchAuctionFlow', () => {
     expect(result.current.isSuccessModalOpen).toBe(false)
     expect(mockNavigate).not.toHaveBeenCalled()
 
-    // Once the launch confirms, the watcher redirects to the auction details page.
+    // Once the launch confirms, the watcher redirects to the auction details page
+    // (via the async receipt resolution, hence the flush).
     mockUseTransaction.mockReturnValue({ status: TransactionStatus.Success })
-    rerender()
+    await act(async () => {
+      rerender()
+    })
     expect(mockNavigate).toHaveBeenCalledWith('/explore/auctions/ethereum/0xAuction')
   })
 
