@@ -106,7 +106,7 @@ export function useZkPassportGate({
 
   const openVerify = useCallback(() => {
     const chainName = chainId ? ZKPASSPORT_CHAIN_NAME[chainId] : undefined
-    if (!chainId || !chainName || !hookRegistry || policyId === undefined || !walletAddress) {
+    if (!chainId || !chainName || !hookRegistry || policyId === undefined) {
       return
     }
     openAttestPopup({
@@ -118,10 +118,10 @@ export function useZkPassportGate({
       attest: {
         chain: chainName,
         policyId: `0x${policyId.toString(16).padStart(64, '0')}`,
-        walletAddress: assume0xAddress(walletAddress),
         registry: hookRegistry,
       },
-      // The popup mints straight to the bound wallet when it can; re-check the
+      // The recipient account is chosen inside the popup; the gate only
+      // unlocks if it matches the wallet connected here, so re-check the
       // credential balance on any outcome, including an early close.
       callbacks: {
         onSuccess: () => {
@@ -132,7 +132,7 @@ export function useZkPassportGate({
         },
       },
     })
-  }, [chainId, hookRegistry, policyId, walletAddress, refetchBalance])
+  }, [chainId, hookRegistry, policyId, refetchBalance])
 
   return useMemo(
     () => ({

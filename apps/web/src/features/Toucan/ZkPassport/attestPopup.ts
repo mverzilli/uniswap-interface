@@ -12,8 +12,6 @@ export interface AttestPopupConfig {
   chain: string
   /** On-chain policy id as a 0x-prefixed 32-byte hex string. */
   policyId: `0x${string}`
-  /** Credential recipient; bound into the proof and checked by issue(). */
-  walletAddress: `0x${string}`
   /** ZKPassportAttest registry address. */
   registry: `0x${string}`
   /** RPC override for dev registries; the popup defaults per chain. */
@@ -22,6 +20,8 @@ export interface AttestPopupConfig {
 
 export interface AttestOutcome {
   status: 'minted' | 'unminted' | 'already-verified'
+  /** Recipient account the user selected in the popup; may differ from the wallet connected here. */
+  walletAddress?: `0x${string}`
   txHash?: `0x${string}`
   reason?: string
 }
@@ -39,13 +39,13 @@ export interface AttestPopupHandle {
   close: () => void
 }
 
-const POPUP_WIDTH = 460
-const POPUP_HEIGHT = 780
 const CLOSE_POLL_INTERVAL = 500
 
 /**
- * Open the hosted verification popup for an attest policy. Must be called
- * from a user gesture or the browser will block the popup.
+ * Open the hosted verification page in a new tab. Must be called from a
+ * user gesture or the browser will block it. No window features are passed:
+ * the page opens with full browser chrome, and `window.opener` stays intact
+ * for the postMessage protocol (never add noopener here).
  */
 export function openAttestPopup({
   popupUrl,
@@ -59,16 +59,7 @@ export function openAttestPopup({
   callbacks?: AttestPopupCallbacks
 }): AttestPopupHandle | null {
   const popupOrigin = new URL(popupUrl).origin
-  const left = Math.max(0, window.screenX + (window.outerWidth - POPUP_WIDTH) / 2)
-  const top = Math.max(0, window.screenY + (window.outerHeight - POPUP_HEIGHT) / 2)
-  const popup =
-    window.open(
-      popupUrl,
-      'zkpassport-verify',
-      `popup,width=${POPUP_WIDTH},height=${POPUP_HEIGHT},left=${Math.round(left)},top=${Math.round(top)}`,
-    ) ??
-    // Popup blocked: retry as a regular new tab
-    window.open(popupUrl, 'zkpassport-verify')
+  const popup = window.open(popupUrl, 'zkpassport-verify')
   if (!popup) {
     return null
   }
