@@ -1,9 +1,12 @@
-import { getChainInfo } from 'uniswap/src/features/chains/chainInfo'
-import { CHAIN_ID_TO_URL_PARAM } from 'uniswap/src/features/chains/chainUrlParam'
 import { UniverseChainId } from 'uniswap/src/features/chains/types'
 
 /** Origin serving the ZKPassport verification popup. */
-export const ZKPASSPORT_POPUP_URL = (process.env.ZKPASSPORT_POPUP_URL ?? 'http://localhost:3010').replace(/\/$/, '')
+export const ZKPASSPORT_POPUP_URL = (process.env.ZKPASSPORT_POPUP_URL ?? 'http://localhost:5173').replace(/\/$/, '')
+
+/** Chain names in the ZKPassport SDK's format, keyed by supported chain. */
+export const ZKPASSPORT_CHAIN_NAME: Partial<Record<UniverseChainId, string>> = {
+  [UniverseChainId.Sepolia]: 'ethereum_sepolia',
+}
 
 /**
  * ZKPassportAttest registry per chain. Used to source the creator-flow policy
@@ -21,20 +24,3 @@ export const ZKPASSPORT_ATTEST_DEPLOY_BLOCK: Partial<Record<UniverseChainId, big
 
 /** Link for creators who want a policy beyond the ready-made list. */
 export const ZKPASSPORT_CREATE_POLICY_URL = process.env.ZKPASSPORT_CREATE_POLICY_URL ?? 'http://localhost:3001/creator'
-
-export function zkPassportVerifyUrl({
-  chainId,
-  registry,
-  policyId,
-}: {
-  chainId: UniverseChainId
-  registry: string
-  policyId: bigint
-}): string {
-  const chainParam = CHAIN_ID_TO_URL_PARAM[chainId]
-  // The mobile app roots proofs in the mainnet registries unless dev mode is
-  // requested, which switches to the testnet registries — so testnet chains
-  // only verify dev-mode proofs.
-  const dev = getChainInfo(chainId).testnet ? '&dev=1' : ''
-  return `${ZKPASSPORT_POPUP_URL}/?chain=${chainParam}&registry=${registry}&policyId=${policyId}${dev}`
-}

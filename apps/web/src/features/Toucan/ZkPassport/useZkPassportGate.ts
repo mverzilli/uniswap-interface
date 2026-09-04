@@ -1,9 +1,15 @@
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
+import { isTestnetChain } from 'uniswap/src/features/chains/utils'
 import { assume0xAddress, zeroAddress } from '~/chains'
 import { gatedErc1155HookAbi, zkPassportAttestAbi } from '~/features/Toucan/ZkPassport/abi'
-import { ZKPASSPORT_ATTEST_REGISTRY, zkPassportVerifyUrl } from '~/features/Toucan/ZkPassport/config'
+import { openAttestPopup } from '~/features/Toucan/ZkPassport/attestPopup'
+import {
+  ZKPASSPORT_ATTEST_REGISTRY,
+  ZKPASSPORT_CHAIN_NAME,
+  ZKPASSPORT_POPUP_URL,
+} from '~/features/Toucan/ZkPassport/config'
 import { getSessionlessPublicClient } from '~/features/Toucan/ZkPassport/sessionlessClient'
 
 export interface ZkPassportGate {
@@ -98,29 +104,35 @@ export function useZkPassportGate({
     enabled: Boolean(isGated && chainId && walletAddress && policyId !== undefined),
   })
 
-  useEffect(() => {
-    if (!isGated) {
-      return undefined
-    }
-    const onMessage = (event: MessageEvent): void => {
-      const data = event.data as { type?: string; policyId?: string } | null
-      if (data?.type === 'zkpassport-attest-result' && data.policyId === policyId?.toString()) {
-        void refetchBalance()
-      }
-    }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
-  }, [isGated, policyId, refetchBalance])
-
   const openVerify = useCallback(() => {
-    if (chainId && hookRegistry && policyId !== undefined) {
-      window.open(
-        zkPassportVerifyUrl({ chainId, registry: hookRegistry, policyId }),
-        'zkpassport-verify',
-        'width=480,height=720',
-      )
+    const chainName = chainId ? ZKPASSPORT_CHAIN_NAME[chainId] : undefined
+    if (!chainId || !chainName || !hookRegistry || policyId === undefined || !walletAddress) {
+      return
     }
-  }, [chainId, hookRegistry, policyId])
+    openAttestPopup({
+      popupUrl: ZKPASSPORT_POPUP_URL,
+      // The mobile app roots proofs in the mainnet registries unless dev mode
+      // is requested, which switches to the testnet registries — so testnet
+      // chains only verify dev-mode proofs.
+      devMode: isTestnetChain(chainId),
+      attest: {
+        chain: chainName,
+        policyId: `0x${policyId.toString(16).padStart(64, '0')}`,
+        walletAddress: assume0xAddress(walletAddress),
+        registry: hookRegistry,
+      },
+      // The popup mints straight to the bound wallet when it can; re-check the
+      // credential balance on any outcome, including an early close.
+      callbacks: {
+        onSuccess: () => {
+          void refetchBalance()
+        },
+        onClose: () => {
+          void refetchBalance()
+        },
+      },
+    })
+  }, [chainId, hookRegistry, policyId, walletAddress, refetchBalance])
 
   return useMemo(
     () => ({
