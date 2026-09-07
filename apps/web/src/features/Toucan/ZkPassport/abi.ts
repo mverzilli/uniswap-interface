@@ -1,11 +1,11 @@
 /**
- * Minimal ABI fragments for reading ZKPassport state on-chain. Everything the
- * interface needs is the stock GatedERC1155ValidationHook surface plus the
- * ERC-1155 reads (balanceOf/uri) and the registry's policy views — no vendor
- * SDK involved.
+ * ABI fragments for reading ZKPassport state on-chain, split by who defines
+ * the interface. The credential check uses only the stock surfaces below;
+ * nothing vendor-specific is needed to gate bids.
  */
 
-export const gatedErc1155HookAbi = [
+/** Getter shape of Uniswap's stock BaseERC1155ValidationHook. */
+export const erc1155ValidationHookAbi = [
   {
     type: 'function',
     name: 'erc1155',
@@ -22,7 +22,8 @@ export const gatedErc1155HookAbi = [
   },
 ] as const
 
-export const zkPassportAttestAbi = [
+/** Standard ERC-1155 read used for the credential balance check. */
+export const erc1155BalanceOfAbi = [
   {
     type: 'function',
     name: 'balanceOf',
@@ -33,13 +34,13 @@ export const zkPassportAttestAbi = [
     ],
     outputs: [{ type: 'uint256' }],
   },
-  {
-    type: 'function',
-    name: 'uri',
-    stateMutability: 'view',
-    inputs: [{ name: 'policyId', type: 'uint256' }],
-    outputs: [{ type: 'string' }],
-  },
+] as const
+
+/**
+ * ZKPassportAttest registry views. Vendor-specific: used only by the creator
+ * wizard to enumerate policies, never by the bid-gating credential check.
+ */
+export const zkPassportAttestAbi = [
   {
     type: 'function',
     name: 'getPolicy',

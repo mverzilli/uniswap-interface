@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { isTestnetChain } from 'uniswap/src/features/chains/utils'
 import { assume0xAddress, zeroAddress } from '~/chains'
-import { gatedErc1155HookAbi, zkPassportAttestAbi } from '~/features/Toucan/ZkPassport/abi'
+import { erc1155BalanceOfAbi, erc1155ValidationHookAbi } from '~/features/Toucan/ZkPassport/abi'
 import {
   ZKPASSPORT_ATTEST_REGISTRY,
   ZKPASSPORT_CHAIN_NAME,
@@ -58,12 +58,12 @@ export function useZkPassportGate({
       const [registry, tokenId] = await Promise.all([
         client.readContract({
           address: hookAddress,
-          abi: gatedErc1155HookAbi,
+          abi: erc1155ValidationHookAbi,
           functionName: 'erc1155',
         }),
         client.readContract({
           address: hookAddress,
-          abi: gatedErc1155HookAbi,
+          abi: erc1155ValidationHookAbi,
           functionName: 'tokenId',
         }),
       ])
@@ -96,7 +96,7 @@ export function useZkPassportGate({
       }
       return getSessionlessPublicClient(chainId).readContract({
         address: hookRegistry,
-        abi: zkPassportAttestAbi,
+        abi: erc1155BalanceOfAbi,
         functionName: 'balanceOf',
         args: [assume0xAddress(walletAddress), policyId],
       })
