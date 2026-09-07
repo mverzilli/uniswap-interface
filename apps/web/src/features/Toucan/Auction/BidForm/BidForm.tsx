@@ -1,6 +1,7 @@
 //! tamagui-ignore
 // tamagui-ignore
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
+import { VerifyWithZKPassportButton, type VerificationOptions } from '@zkpassport/ui/react-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDispatch } from 'react-redux'
@@ -371,10 +372,9 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
       <KycInterstitialModal
         isOpen={isZkInterstitialModalOpen}
         onClose={() => setIsZkInterstitialModalOpen(false)}
-        onContinue={() => {
-          setIsZkInterstitialModalOpen(false)
-          zkGate.openVerify()
-        }}
+        actionSlot={
+          <ZkVerifyAction verifyProps={zkGate.verifyProps} onVerified={() => setIsZkInterstitialModalOpen(false)} />
+        }
         providerName="ZKPassport"
         providerTermsUrl="https://zkpassport.id/terms"
         providerPrivacyUrl="https://zkpassport.id/privacy"
@@ -390,5 +390,31 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
         />
       )}
     </Flex>
+  )
+}
+
+/**
+ * Branded verify button for the interstitial's action slot. Renders nothing
+ * until the gate has resolved the hook's policy into verify options, which is
+ * guaranteed by the time the interstitial can open.
+ */
+function ZkVerifyAction({
+  verifyProps,
+  onVerified,
+}: {
+  verifyProps?: VerificationOptions
+  onVerified: () => void
+}): JSX.Element | null {
+  if (!verifyProps) {
+    return null
+  }
+  return (
+    <VerifyWithZKPassportButton
+      {...verifyProps}
+      onSuccess={(response) => {
+        onVerified()
+        return verifyProps.onSuccess?.(response)
+      }}
+    />
   )
 }

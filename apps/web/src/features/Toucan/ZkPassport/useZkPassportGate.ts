@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useMemo } from 'react'
+import type { VerificationOptions } from '@zkpassport/ui/react-button'
+import { useMemo } from 'react'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { isTestnetChain } from 'uniswap/src/features/chains/utils'
 import { assume0xAddress, zeroAddress } from '~/chains'
 import { gatedErc1155HookAbi, zkPassportAttestAbi } from '~/features/Toucan/ZkPassport/abi'
-import { openAttestPopup } from '~/features/Toucan/ZkPassport/attestPopup'
 import {
   ZKPASSPORT_ATTEST_REGISTRY,
   ZKPASSPORT_CHAIN_NAME,
@@ -21,8 +21,8 @@ export interface ZkPassportGate {
   isLoading: boolean
   policyId?: bigint
   registry?: `0x${string}`
-  /** Opens the ZKPassport verification popup for the hook's policy */
-  openVerify: () => void
+  /** Options for VerifyWithZKPassportButton; set once the hook's policy is resolved */
+  verifyProps?: VerificationOptions
 }
 
 /**
@@ -104,34 +104,32 @@ export function useZkPassportGate({
     enabled: Boolean(isGated && chainId && walletAddress && policyId !== undefined),
   })
 
-  const openVerify = useCallback(() => {
+  const verifyProps = useMemo((): VerificationOptions | undefined => {
     const chainName = chainId ? ZKPASSPORT_CHAIN_NAME[chainId] : undefined
     if (!chainId || !chainName || !hookRegistry || policyId === undefined) {
-      return
+      return undefined
     }
-    openAttestPopup({
+    return {
+      mintToken: true,
+      chain: chainName as VerificationOptions['chain'],
+      policyId: `0x${policyId.toString(16).padStart(64, '0')}`,
+      registry: hookRegistry,
       popupUrl: ZKPASSPORT_POPUP_URL,
+      windowMode: 'tab',
       // The mobile app roots proofs in the mainnet registries unless dev mode
       // is requested, which switches to the testnet registries — so testnet
       // chains only verify dev-mode proofs.
       devMode: isTestnetChain(chainId),
-      attest: {
-        chain: chainName,
-        policyId: `0x${policyId.toString(16).padStart(64, '0')}`,
-        registry: hookRegistry,
-      },
       // The recipient account is chosen inside the popup; the gate only
       // unlocks if it matches the wallet connected here, so re-check the
       // credential balance on any outcome, including an early close.
-      callbacks: {
-        onSuccess: () => {
-          void refetchBalance()
-        },
-        onClose: () => {
-          void refetchBalance()
-        },
+      onSuccess: () => {
+        refetchBalance().catch(() => undefined)
       },
-    })
+      onClose: () => {
+        refetchBalance().catch(() => undefined)
+      },
+    }
   }, [chainId, hookRegistry, policyId, refetchBalance])
 
   return useMemo(
@@ -141,8 +139,18 @@ export function useZkPassportGate({
       isLoading: Boolean(hookAddress) && (isHookLoading || (isGated && Boolean(walletAddress) && isBalanceLoading)),
       policyId: isGated ? policyId : undefined,
       registry: isGated ? hookRegistry : undefined,
-      openVerify,
+      verifyProps,
     }),
-    [isGated, balance, hookAddress, isHookLoading, walletAddress, isBalanceLoading, policyId, hookRegistry, openVerify],
+    [
+      isGated,
+      balance,
+      hookAddress,
+      isHookLoading,
+      walletAddress,
+      isBalanceLoading,
+      policyId,
+      hookRegistry,
+      verifyProps,
+    ],
   )
 }

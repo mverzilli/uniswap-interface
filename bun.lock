@@ -1,6 +1,6 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "universe",
@@ -417,6 +417,7 @@
         "@visx/shape": "2.18.0",
         "@web3-react/core": "8.2.3",
         "@web3-react/empty": "8.2.3",
+        "@zkpassport/ui": "file:vendor/zkpassport-ui-0.17.0-beta.2.tgz",
         "ajv": "8.18.0",
         "ajv-formats": "2.1.1",
         "buffer": "6.0.3",
@@ -4939,6 +4940,8 @@
     "@yarnpkg/parsers": ["@yarnpkg/parsers@3.0.2", "", { "dependencies": { "js-yaml": "^3.10.0", "tslib": "^2.4.0" } }, "sha512-/HcYgtUSiJiot/XWGLOlGxPYUG65+/31V8oqk17vZLW1xlCoR4PampyePljOxY2n8/3jz9+tIFzICsyGujJZoA=="],
 
     "@zkochan/js-yaml": ["@zkochan/js-yaml@0.0.7", "", { "dependencies": { "argparse": "^2.0.1" }, "bin": { "js-yaml": "bin/js-yaml.js" } }, "sha512-nrUSn7hzt7J6JWgWGz78ZYI8wj+gdIJdk0Ynjpp8l+trkn58Uqsf6RYrYkEK+3X18EX+TNdtJI0WxAtc+L84SQ=="],
+
+    "@zkpassport/ui": ["@zkpassport/ui@vendor/zkpassport-ui-0.17.0-beta.2.tgz", { "peerDependencies": { "react": ">=18", "react-dom": ">=18" }, "optionalPeers": ["react", "react-dom"] }, "sha512-2nmt2K4i/EbB9OOEhwLI7/uETkOZxwjJdgOOxFrrpQzF/UVD5ilMJ88lIPBCUwjBZjU7IBjL6aFm82juZ4SFww=="],
 
     "JSONStream": ["JSONStream@1.3.5", "", { "dependencies": { "jsonparse": "^1.2.0", "through": ">=2.2.7 <3" }, "bin": { "JSONStream": "./bin.js" } }, "sha512-E+iruNOY8VV9s4JEbe1aNEm6MiszPRr/UfcHMz0TQh1BXSxHK+ASV1R6W4HpjBhSeS+54PIsAMCBmwD06LLsqQ=="],
 

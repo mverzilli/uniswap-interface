@@ -239,6 +239,7 @@
     "@visx/shape": "2.18.0",
     "@web3-react/core": "8.2.3",
     "@web3-react/empty": "8.2.3",
+    "@zkpassport/ui": "file:vendor/zkpassport-ui-0.17.0-beta.2.tgz",
     "ajv": "8.18.0",
     "ajv-formats": "2.1.1",
     "buffer": "6.0.3",
