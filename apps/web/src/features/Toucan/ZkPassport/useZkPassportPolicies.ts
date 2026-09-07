@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { usePublicClient } from 'wagmi'
-import { zkPassportAttestAbi, type ZkPassportPolicy } from '~/features/Toucan/ZkPassport/abi'
 import { ZKPASSPORT_ATTEST_DEPLOY_BLOCK, ZKPASSPORT_ATTEST_REGISTRY } from '~/features/Toucan/ZkPassport/config'
+import { policyCreatedEvent, zkPassportAttestAbi, type ZkPassportPolicy } from '~/features/Toucan/ZkPassport/launchAbi'
 
 export interface ZkPassportPolicyOption {
   policyId: bigint
@@ -10,8 +10,6 @@ export interface ZkPassportPolicyOption {
   label: string
   policy: ZkPassportPolicy
 }
-
-const policyCreatedEvent = zkPassportAttestAbi.find((entry) => entry.type === 'event' && entry.name === 'PolicyCreated')
 
 /** Compact human-readable summary of what a policy checks. */
 export function zkPassportPolicyLabel(policy: ZkPassportPolicy): string {
@@ -49,7 +47,7 @@ export function useZkPassportPolicies(chainId?: UniverseChainId): {
     queryKey: ['zkpassport-policies', chainId, registry],
     enabled: Boolean(registry && publicClient),
     queryFn: async (): Promise<ZkPassportPolicyOption[]> => {
-      if (!registry || !publicClient || !policyCreatedEvent) {
+      if (!registry || !publicClient) {
         return []
       }
       const logs = await publicClient.getLogs({

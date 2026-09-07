@@ -4,7 +4,7 @@ import { useMemo } from 'react'
 import type { UniverseChainId } from 'uniswap/src/features/chains/types'
 import { isTestnetChain } from 'uniswap/src/features/chains/utils'
 import { assume0xAddress, zeroAddress } from '~/chains'
-import { erc1155BalanceOfAbi, erc1155ValidationHookAbi } from '~/features/Toucan/ZkPassport/abi'
+import { erc1155BalanceOfAbi, erc1155ValidationHookAbi } from '~/features/Toucan/ZkPassport/bidAbi'
 import {
   ZKPASSPORT_ATTEST_REGISTRY,
   ZKPASSPORT_CHAIN_NAME,
