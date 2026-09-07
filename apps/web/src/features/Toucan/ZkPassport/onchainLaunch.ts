@@ -1,8 +1,8 @@
-import { type PartialMessage } from "@bufbuild/protobuf";
+import { type PartialMessage } from '@bufbuild/protobuf'
 import {
   type CreateAuctionRequest,
   PriceRangeStrategy as ProtoPriceRangeStrategy,
-} from "@uniswap/client-liquidity/dist/uniswap/liquidity/v1/auction_pb";
+} from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/auction_pb'
 import {
   buildLaunchTransactions,
   buildLpAllocationSchedule,
@@ -32,8 +32,8 @@ import {
   requiredCurrencyRaised,
   resolvePoolFee,
   selectTokenFactory,
-} from "@uniswap/liquidity-launcher-sdk";
-import { type Address, type Hex, type PublicClient, zeroAddress } from "viem";
+} from '@uniswap/liquidity-launcher-sdk'
+import { type Address, type Hex, type PublicClient, zeroAddress } from 'viem'
 
 /**
  * When enabled, auction creation is assembled locally with Uniswap's public
@@ -42,68 +42,63 @@ import { type Address, type Hex, type PublicClient, zeroAddress } from "viem";
  * that backend (no CORS); the SDK builds "the exact shape the backend builds"
  * (its words) against the permissionless launcher contracts.
  */
-export const ZKPASSPORT_ONCHAIN_LAUNCH =
-  process.env.ZKPASSPORT_ONCHAIN_LAUNCH === "true";
+export const ZKPASSPORT_ONCHAIN_LAUNCH = process.env.ZKPASSPORT_ONCHAIN_LAUNCH === 'true'
 
 export interface OnchainCreateAuctionResult {
-  predictedTokenAddress: string;
-  predictedAuctionAddress: string;
+  predictedTokenAddress: string
+  predictedAuctionAddress: string
   transactions: Array<{
-    to: string;
-    from: string;
-    data: string;
-    value: bigint;
-    chainId: number;
-  }>;
-  atomicallyBundleable: boolean;
-  requestId: string;
+    to: string
+    from: string
+    data: string
+    value: bigint
+    chainId: number
+  }>
+  atomicallyBundleable: boolean
+  requestId: string
 }
 
 class OnchainLaunchUnsupportedError extends Error {
   constructor(feature: string) {
     super(
-      `${feature} is not supported by the on-chain launch fallback; disable it or launch from an origin with liquidity-backend access`
-    );
-    this.name = "OnchainLaunchUnsupportedError";
+      `${feature} is not supported by the on-chain launch fallback; disable it or launch from an origin with liquidity-backend access`,
+    )
+    this.name = 'OnchainLaunchUnsupportedError'
   }
 }
 
 function toPriceRangeKind(strategy: ProtoPriceRangeStrategy): PriceRangeKind {
   switch (strategy) {
     case ProtoPriceRangeStrategy.CONCENTRATED_FULL_RANGE:
-      return "CONCENTRATED_FULL_RANGE";
+      return 'CONCENTRATED_FULL_RANGE'
     case ProtoPriceRangeStrategy.FULL_RANGE:
-      return "FULL_RANGE";
+      return 'FULL_RANGE'
     case ProtoPriceRangeStrategy.CUSTOM_RANGE:
-      return "CUSTOM_RANGE";
+      return 'CUSTOM_RANGE'
     default:
-      throw new OnchainLaunchUnsupportedError(
-        `Price range strategy ${strategy}`
-      );
+      throw new OnchainLaunchUnsupportedError(`Price range strategy ${strategy}`)
   }
 }
 
 function toLpAllocationInput(
-  lpAllocation: NonNullable<
-    NonNullable<PartialMessage<CreateAuctionRequest>["pool"]>["lpAllocation"]
-  >,
-  raiseCurrencyDecimals: number
+  lpAllocation: NonNullable<NonNullable<PartialMessage<CreateAuctionRequest>['pool']>['lpAllocation']>,
+  raiseCurrencyDecimals: number,
 ): LpAllocationInput {
-  const kind = lpAllocation.kind;
-  if (kind?.case === "singlePercent") {
-    return { kind: "single", percent: kind.value };
+  const kind = lpAllocation.kind
+  if (kind?.case === 'singlePercent') {
+    return { kind: 'single', percent: kind.value }
   }
-  if (kind?.case === "tiered") {
+  if (kind?.case === 'tiered') {
     return {
-      kind: "tiered",
+      kind: 'tiered',
       raiseCurrencyDecimals,
       tiers: (kind.value.tiers ?? []).map((tier) => ({
-        raiseMilestone: tier.raiseMilestone ?? "",
+        raiseMilestone: tier.raiseMilestone ?? '',
         percent: tier.percent ?? 0,
       })),
-    };
+    }
   }
-  throw new OnchainLaunchUnsupportedError("Unset LP allocation");
+  throw new OnchainLaunchUnsupportedError('Unset LP allocation')
 }
 
 /**
@@ -118,66 +113,61 @@ export async function buildOnchainCreateAuction({
   chainId,
   publicClient,
 }: {
-  request: PartialMessage<CreateAuctionRequest>;
-  chainId: number;
-  publicClient: PublicClient;
+  request: PartialMessage<CreateAuctionRequest>
+  chainId: number
+  publicClient: PublicClient
 }): Promise<OnchainCreateAuctionResult> {
-  const auction = request.auction;
-  const pool = request.pool;
-  const walletAddress = request.walletAddress as Address | undefined;
-  const salt = request.salt as Hex | undefined;
+  const auction = request.auction
+  const pool = request.pool
+  const walletAddress = request.walletAddress as Address | undefined
+  const salt = request.salt as Hex | undefined
   if (!auction || !pool || !walletAddress || !salt) {
-    throw new Error("Incomplete auction request");
+    throw new Error('Incomplete auction request')
   }
-  if (request.tokenInfo?.source?.case !== "newToken") {
-    throw new OnchainLaunchUnsupportedError("Launching an existing token");
+  if (request.tokenInfo?.source?.case !== 'newToken') {
+    throw new OnchainLaunchUnsupportedError('Launching an existing token')
   }
   if (pool.liquidityLock) {
-    throw new OnchainLaunchUnsupportedError("Liquidity locking");
+    throw new OnchainLaunchUnsupportedError('Liquidity locking')
   }
-  const newToken = request.tokenInfo.source.value;
+  const newToken = request.tokenInfo.source.value
 
-  const addresses = getLauncherAddresses(chainId);
-  const tokenFactory = selectTokenFactory(addresses);
+  const addresses = getLauncherAddresses(chainId)
+  const tokenFactory = selectTokenFactory(addresses)
   if (!tokenFactory) {
-    throw new OnchainLaunchUnsupportedError(
-      `New-token launches on chain ${chainId}`
-    );
+    throw new OnchainLaunchUnsupportedError(`New-token launches on chain ${chainId}`)
   }
 
-  const totalSupply = BigInt(newToken.totalSupply ?? "0");
-  const auctionSupply = BigInt(auction.auctionSupply ?? "0");
-  const returnedSupply = BigInt(auction.returnedSupply ?? "0");
-  const reservedForLp = BigInt(pool.reservedSupplyForLp ?? "0");
-  const lbpAmount = auctionSupply - returnedSupply;
-  const soldSupply = lbpAmount - reservedForLp;
-  const currency = (auction.currencyAddress || zeroAddress) as Address;
-  const poolOwner = (pool.poolOwner || walletAddress) as Address;
+  const totalSupply = BigInt(newToken.totalSupply ?? '0')
+  const auctionSupply = BigInt(auction.auctionSupply ?? '0')
+  const returnedSupply = BigInt(auction.returnedSupply ?? '0')
+  const reservedForLp = BigInt(pool.reservedSupplyForLp ?? '0')
+  const lbpAmount = auctionSupply - returnedSupply
+  const soldSupply = lbpAmount - reservedForLp
+  const currency = (auction.currencyAddress || zeroAddress) as Address
+  const poolOwner = (pool.poolOwner || walletAddress) as Address
 
   const tokenData = encodeTokenData({
-    description: newToken.metadata?.description ?? "",
-    website: "",
-    image: newToken.metadata?.image ?? "",
-    extraData: "0x",
-  });
+    description: newToken.metadata?.description ?? '',
+    website: '',
+    image: newToken.metadata?.image ?? '',
+    extraData: '0x',
+  })
 
-  const [predictedTokenAddress, currentBlock, currencyDecimals] =
-    await Promise.all([
-      predictTokenAddress(publicClient, {
-        factory: tokenFactory.factory,
-        kind: tokenFactory.kind,
-        launcherAddress: addresses.liquidityLauncher,
-        wallet: walletAddress,
-        name: newToken.name ?? "",
-        symbol: newToken.symbol ?? "",
-        decimals: NEW_TOKEN_DECIMALS,
-        homeChainId: BigInt(chainId),
-      }),
-      publicClient.getBlockNumber(),
-      currency === zeroAddress
-        ? Promise.resolve(18)
-        : getErc20Decimals(publicClient, currency),
-    ]);
+  const [predictedTokenAddress, currentBlock, currencyDecimals] = await Promise.all([
+    predictTokenAddress(publicClient, {
+      factory: tokenFactory.factory,
+      kind: tokenFactory.kind,
+      launcherAddress: addresses.liquidityLauncher,
+      wallet: walletAddress,
+      name: newToken.name ?? '',
+      symbol: newToken.symbol ?? '',
+      decimals: NEW_TOKEN_DECIMALS,
+      homeChainId: BigInt(chainId),
+    }),
+    publicClient.getBlockNumber(),
+    currency === zeroAddress ? Promise.resolve(18) : getErc20Decimals(publicClient, currency),
+  ])
 
   const blocks = deriveBlocks({
     startTimeUnix: BigInt(auction.startTimeUnix ?? 0n),
@@ -185,24 +175,15 @@ export async function buildOnchainCreateAuction({
     currentBlock,
     nowUnix: BigInt(Math.floor(Date.now() / 1000)),
     blockTimeSeconds: getBlockTimeSeconds(chainId),
-  });
+  })
 
   const pricing = deriveAuctionPricing(
-    floorPriceToX96(
-      auction.floorPriceRaisePerToken ?? "0",
-      NEW_TOKEN_DECIMALS,
-      currencyDecimals
-    )
-  );
+    floorPriceToX96(auction.floorPriceRaisePerToken ?? '0', NEW_TOKEN_DECIMALS, currencyDecimals),
+  )
   const graduationX96 = auction.graduationPriceRaisePerToken
-    ? deriveAuctionPricing(
-        floorPriceToX96(
-          auction.graduationPriceRaisePerToken,
-          NEW_TOKEN_DECIMALS,
-          currencyDecimals
-        )
-      ).floorPriceX96
-    : pricing.floorPriceX96;
+    ? deriveAuctionPricing(floorPriceToX96(auction.graduationPriceRaisePerToken, NEW_TOKEN_DECIMALS, currencyDecimals))
+        .floorPriceX96
+    : pricing.floorPriceX96
 
   const auctionParams = encodeAuctionParams({
     currency,
@@ -215,13 +196,11 @@ export async function buildOnchainCreateAuction({
     validationHook: (auction.validationHook || zeroAddress) as Address,
     floorPrice: pricing.floorPriceX96,
     requiredCurrencyRaised: requiredCurrencyRaised(graduationX96, soldSupply),
-    auctionStepsData: encodeAuctionSteps(
-      deriveConvexAuctionSteps(blocks.startBlock, blocks.endBlock)
-    ),
-  });
+    auctionStepsData: encodeAuctionSteps(deriveConvexAuctionSteps(blocks.startBlock, blocks.endBlock)),
+  })
 
-  const poolFee = resolvePoolFee(pool.fee ?? 0, pool.dynamicFee ?? false);
-  const poolTickSpacing = feeToTickSpacing(pool.fee ?? 0);
+  const poolFee = resolvePoolFee(pool.fee ?? 0, pool.dynamicFee ?? false)
+  const poolTickSpacing = feeToTickSpacing(pool.fee ?? 0)
   const migrator = {
     token: predictedTokenAddress,
     currency,
@@ -236,36 +215,28 @@ export async function buildOnchainCreateAuction({
     },
     positionDefinitions: encodePositionDefinitions(
       buildPositionDefinitions(
-        toPriceRangeKind(
-          pool.priceRangeStrategy ?? ProtoPriceRangeStrategy.UNSPECIFIED
-        ),
+        toPriceRangeKind(pool.priceRangeStrategy ?? ProtoPriceRangeStrategy.UNSPECIFIED),
         (pool.customRanges ?? []).map((range) => ({
           minPercentFromClearing: Number(range.minPercentFromClearing),
           maxPercentFromClearing: Number(range.maxPercentFromClearing),
           liquidityPercent: range.liquidityPercent ?? 0,
         })),
-        poolTickSpacing
-      )
+        poolTickSpacing,
+      ),
     ),
     lpAllocationSchedule: encodeLpAllocationSchedule(
-      buildLpAllocationSchedule(
-        toLpAllocationInput(pool.lpAllocation ?? {}, currencyDecimals)
-      )
+      buildLpAllocationSchedule(toLpAllocationInput(pool.lpAllocation ?? {}, currencyDecimals)),
     ),
-  };
-  const configData = encodeConfigData(migrator, auctionParams);
+  }
+  const configData = encodeConfigData(migrator, auctionParams)
 
-  const distributions = [
-    { strategy: addresses.lbpStrategy, amount: lbpAmount, configData },
-  ];
+  const distributions = [{ strategy: addresses.lbpStrategy, amount: lbpAmount, configData }]
   if (returnedSupply > 0n) {
     distributions.push({
       strategy: addresses.tokenSplitter,
       amount: returnedSupply,
-      configData: encodeTokenSplitterConfig([
-        { recipient: walletAddress, amount: returnedSupply },
-      ]),
-    });
+      configData: encodeTokenSplitterConfig([{ recipient: walletAddress, amount: returnedSupply }]),
+    })
   }
 
   const [transactions, predictedAuctionAddress] = await Promise.all([
@@ -275,11 +246,11 @@ export async function buildOnchainCreateAuction({
         token: predictedTokenAddress,
         salt,
         acquire: {
-          kind: "create",
+          kind: 'create',
           args: {
             factory: tokenFactory.factory,
-            name: newToken.name ?? "",
-            symbol: newToken.symbol ?? "",
+            name: newToken.name ?? '',
+            symbol: newToken.symbol ?? '',
             decimals: NEW_TOKEN_DECIMALS,
             initialSupply: totalSupply,
             recipient: addresses.liquidityLauncher,
@@ -287,7 +258,7 @@ export async function buildOnchainCreateAuction({
           },
         },
         distributions,
-      })
+      }),
     ),
     predictAuctionAddress(publicClient, {
       strategy: addresses.lbpStrategy,
@@ -296,7 +267,7 @@ export async function buildOnchainCreateAuction({
       auctionParams,
       initializerSalt: computeInitializerSalt(walletAddress, salt, migrator),
     }),
-  ]);
+  ])
 
   return {
     predictedTokenAddress,
@@ -308,5 +279,5 @@ export async function buildOnchainCreateAuction({
     })),
     atomicallyBundleable: false,
     requestId: crypto.randomUUID(),
-  };
+  }
 }
