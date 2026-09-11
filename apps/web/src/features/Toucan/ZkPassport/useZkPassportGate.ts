@@ -110,10 +110,10 @@ export function useZkPassportGate({
       return undefined
     }
     return {
-      mintToken: true,
-      chain: chainName as VerificationOptions['chain'],
-      policyId: `0x${policyId.toString(16).padStart(64, '0')}`,
-      registry: hookRegistry,
+      mintCredential: {
+        chain: chainName as NonNullable<VerificationOptions['mintCredential']>['chain'],
+        onchainPolicyId: `0x${policyId.toString(16).padStart(64, '0')}`,
+      },
       popupUrl: ZKPASSPORT_POPUP_URL,
       windowMode: 'tab',
       // The mobile app roots proofs in the mainnet registries unless dev mode
