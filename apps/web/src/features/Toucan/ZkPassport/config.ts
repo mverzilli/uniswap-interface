@@ -9,17 +9,17 @@ export const ZKPASSPORT_CHAIN_NAME: Partial<Record<UniverseChainId, string>> = {
 }
 
 /**
- * ZKPassportAttest registry per chain. Used to source the creator-flow policy
- * dropdown and to recognize auction validation hooks that gate on it.
+ * ZKPassportCredentials registry per chain. Used to source the creator-flow
+ * policy dropdown and to recognize auction validation hooks that gate on it.
  */
 export const ZKPASSPORT_ATTEST_REGISTRY: Partial<Record<UniverseChainId, `0x${string}`>> = {
   [UniverseChainId.Sepolia]: (process.env.ZKPASSPORT_ATTEST_REGISTRY_SEPOLIA ??
-    '0x2a615a175439b9eb0004b924aBdD2B4c7a871f11') as `0x${string}`,
+    '0x3278117D873965036B5e0007112ADDd488Bde3e1') as `0x${string}`,
 }
 
 /** Block each registry was deployed at, bounding PolicyCreated log scans. */
 export const ZKPASSPORT_ATTEST_DEPLOY_BLOCK: Partial<Record<UniverseChainId, bigint>> = {
-  [UniverseChainId.Sepolia]: BigInt(process.env.ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA ?? 11625471),
+  [UniverseChainId.Sepolia]: BigInt(process.env.ZKPASSPORT_ATTEST_DEPLOY_BLOCK_SEPOLIA ?? 11682621),
 }
 
 /** Link for creators who want a policy beyond the ready-made list. */
