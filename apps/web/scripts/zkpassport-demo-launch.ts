@@ -135,13 +135,15 @@ function randomHex32(): Hex {
 }
 
 async function main(): Promise<void> {
-  const privateKey = process.env.PRIVATE_KEY;
+  const privateKey = process.env.PRIVATE_KEY?.trim();
   if (!privateKey) {
     throw new Error(
       "PRIVATE_KEY is required (read -s PRIVATE_KEY && export PRIVATE_KEY)"
     );
   }
-  const account = privateKeyToAccount(privateKey as Hex);
+  const account = privateKeyToAccount(
+    (privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`) as Hex
+  );
   const registry = (process.env.REGISTRY ?? DEFAULT_REGISTRY) as Address;
   const transport = http(
     process.env.RPC_URL ?? "https://ethereum-sepolia-rpc.publicnode.com"
