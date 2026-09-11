@@ -13,7 +13,14 @@
  * (bunx turbo run build --filter=@zkpassport/ui), then restart the dev server.
  */
 import { execFileSync } from "child_process";
-import { existsSync, lstatSync, readFileSync, rmSync, symlinkSync } from "fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+} from "fs";
 import * as path from "path";
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -60,6 +67,7 @@ if (!existsSync(path.join(target, "dist/esm/react-button.js"))) {
 }
 
 rmSync(installed, { recursive: true, force: true });
+mkdirSync(path.dirname(installed), { recursive: true });
 symlinkSync(target, installed, "dir");
 rmSync(viteCache, { recursive: true, force: true });
 
