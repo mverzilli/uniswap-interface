@@ -11,8 +11,6 @@ import { ValidatedTransactionRequest } from 'uniswap/src/features/transactions/t
 import { areAddressesEqual } from 'uniswap/src/utils/addresses'
 import { logger } from 'utilities/src/logger/logger'
 import { useEvent } from 'utilities/src/react/hooks'
-import { usePublicClient } from 'wagmi'
-import { buildOnchainCreateAuction, ZKPASSPORT_ONCHAIN_LAUNCH } from '~/features/Toucan/ZkPassport/onchainLaunch'
 import { getAuctionCreateFailedDiagnostics } from '~/pages/Liquidity/CreateAuction/analytics'
 import { buildCreateAuctionRequest } from '~/pages/Liquidity/CreateAuction/buildCreateAuctionRequest'
 import {
@@ -135,10 +133,7 @@ function reportAuctionCreateFailed(args: {
   /** Config snapshot (Datadog only) so a failure can be tied to the inputs that produced it. */
   diagnostics?: Record<string, unknown>
 }): void {
-  const props = args.getCreateFailedProperties?.({
-    failedStep: args.failedStep,
-    errorCode: args.errorCode,
-  })
+  const props = args.getCreateFailedProperties?.({ failedStep: args.failedStep, errorCode: args.errorCode })
   if (props) {
     sendAnalyticsEvent(AuctionEventName.AuctionCreateFailed, props)
   }
@@ -187,8 +182,6 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     getCreateFailedProperties,
   } = params
   const createAuctionMutation = useCreateAuctionMutation()
-  const launchChainId = configureAuction.committed?.totalSupply.currency.chainId
-  const publicClient = usePublicClient({ chainId: launchChainId })
   const [error, setError] = useState<Error | undefined>(undefined)
 
   // Existing mode needs a resolved token; without it the request builder suppresses the request
@@ -207,10 +200,7 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
   const onLaunch = useEvent(async (): Promise<CreateAuctionSubmitResult | undefined> => {
     setError(undefined)
     // Config snapshot logged alongside every failure below so Datadog shows which inputs triggered it.
-    const diagnostics = getAuctionCreateFailedDiagnostics({
-      configureAuction,
-      customizePool,
-    })
+    const diagnostics = getAuctionCreateFailedDiagnostics({ configureAuction, customizePool })
 
     if (!walletAddress) {
       // Unreachable on first open (the launch button is gated on a connected wallet), but a wallet
@@ -224,12 +214,7 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     if (configureAuction.startTime && configureAuction.startTime.getTime() <= Date.now()) {
       const err = new AuctionStartTimePassedError()
       setError(err)
-      reportAuctionCreateFailed({
-        getCreateFailedProperties,
-        failedStep: 'build_request',
-        error: err,
-        diagnostics,
-      })
+      reportAuctionCreateFailed({ getCreateFailedProperties, failedStep: 'build_request', error: err, diagnostics })
       return undefined
     }
 
@@ -239,21 +224,13 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     if (
       xVerification &&
       !areAddressesEqual({
-        addressInput1: {
-          address: xVerification.boundWalletAddress,
-          platform: Platform.EVM,
-        },
+        addressInput1: { address: xVerification.boundWalletAddress, platform: Platform.EVM },
         addressInput2: { address: walletAddress, platform: Platform.EVM },
       })
     ) {
       const err = new AuctionXWalletMismatchError()
       setError(err)
-      reportAuctionCreateFailed({
-        getCreateFailedProperties,
-        failedStep: 'build_request',
-        error: err,
-        diagnostics,
-      })
+      reportAuctionCreateFailed({ getCreateFailedProperties, failedStep: 'build_request', error: err, diagnostics })
       return undefined
     }
 
@@ -266,12 +243,7 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     ) {
       const err = new AuctionInsufficientBalanceError()
       setError(err)
-      reportAuctionCreateFailed({
-        getCreateFailedProperties,
-        failedStep: 'build_request',
-        error: err,
-        diagnostics,
-      })
+      reportAuctionCreateFailed({ getCreateFailedProperties, failedStep: 'build_request', error: err, diagnostics })
       return undefined
     }
 
@@ -286,12 +258,7 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     ) {
       const err = new AuctionWindowTooShortError()
       setError(err)
-      reportAuctionCreateFailed({
-        getCreateFailedProperties,
-        failedStep: 'build_request',
-        error: err,
-        diagnostics,
-      })
+      reportAuctionCreateFailed({ getCreateFailedProperties, failedStep: 'build_request', error: err, diagnostics })
       return undefined
     }
 
@@ -308,24 +275,12 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
     if (!request) {
       const err = new Error('Auction configuration is incomplete')
       setError(err)
-      reportAuctionCreateFailed({
-        getCreateFailedProperties,
-        failedStep: 'build_request',
-        error: err,
-        diagnostics,
-      })
+      reportAuctionCreateFailed({ getCreateFailedProperties, failedStep: 'build_request', error: err, diagnostics })
       return undefined
     }
 
     try {
-      const response =
-        ZKPASSPORT_ONCHAIN_LAUNCH && launchChainId !== undefined && publicClient
-          ? await buildOnchainCreateAuction({
-              request,
-              chainId: launchChainId,
-              publicClient,
-            })
-          : await createAuctionMutation.mutateAsync(request)
+      const response = await createAuctionMutation.mutateAsync(request)
 
       const transactions = response.transactions
         .map((tx) =>

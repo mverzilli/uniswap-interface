@@ -35,15 +35,6 @@ import {
 } from '@uniswap/liquidity-launcher-sdk'
 import { type Address, type Hex, type PublicClient, zeroAddress } from 'viem'
 
-/**
- * When enabled, auction creation is assembled locally with Uniswap's public
- * @uniswap/liquidity-launcher-sdk instead of asking the liquidity backend for
- * the transaction plan. Third-party deployments of this interface cannot reach
- * that backend (no CORS); the SDK builds "the exact shape the backend builds"
- * (its words) against the permissionless launcher contracts.
- */
-export const ZKPASSPORT_ONCHAIN_LAUNCH = process.env.ZKPASSPORT_ONCHAIN_LAUNCH === 'true'
-
 export interface OnchainCreateAuctionResult {
   predictedTokenAddress: string
   predictedAuctionAddress: string

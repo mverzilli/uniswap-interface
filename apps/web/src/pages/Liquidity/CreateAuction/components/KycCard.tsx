@@ -6,7 +6,6 @@ import { UserCheck } from 'ui/src/components/icons/UserCheck'
 import { X } from 'ui/src/components/icons/X'
 import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { shortenAddress } from 'utilities/src/addresses'
-import { ZkPassportPolicyPicker } from '~/features/Toucan/ZkPassport/ZkPassportPolicyPicker'
 import { KycHookSetupModal } from '~/pages/Liquidity/CreateAuction/components/KycHookSetupModal'
 import {
   useCreateAuctionStore,
@@ -82,10 +81,7 @@ export function KycCard() {
   }
 
   if (kycValidationHookAddress) {
-    const short = shortenAddress({
-      address: kycValidationHookAddress,
-      chars: 6,
-    })
+    const short = shortenAddress({ address: kycValidationHookAddress, chars: 6 })
 
     return (
       <KycCardShell>
@@ -142,11 +138,6 @@ export function KycCard() {
         <Flex gap="$spacing8" flex={1}>
           <KycDescriptionAndLearnMore />
         </Flex>
-
-        <ZkPassportPolicyPicker
-          chainId={chainId}
-          onSelectHook={(hookAddress) => setKycValidationHookAddress(hookAddress)}
-        />
 
         <Flex row>
           <Button size="small" emphasis="secondary" fill onPress={openModal}>
