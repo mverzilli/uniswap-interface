@@ -1,7 +1,7 @@
 //! tamagui-ignore
 // tamagui-ignore
 import { FeatureFlags, useFeatureFlag } from '@universe/gating'
-import { VerifyWithZKPassportButton, type VerificationOptions } from '@zkpassport/ui/react-button'
+import { VerifyWithZKPassport, type VerificationOptions } from '@zkpassport/ui/react-button'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDispatch } from 'react-redux'
@@ -409,7 +409,7 @@ function ZkVerifyAction({
     return null
   }
   return (
-    <VerifyWithZKPassportButton
+    <VerifyWithZKPassport
       {...verifyProps}
       onSuccess={(response) => {
         onVerified()
