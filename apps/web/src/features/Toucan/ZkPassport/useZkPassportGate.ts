@@ -21,7 +21,7 @@ export interface ZkPassportGate {
   isLoading: boolean
   policyId?: bigint
   registry?: `0x${string}`
-  /** Options for VerifyWithZKPassportButton; set once the hook's policy is resolved */
+  /** Options for VerifyWithZKPassport; set once the hook's policy is resolved */
   verifyProps?: VerificationOptions
 }
 
@@ -106,13 +106,17 @@ export function useZkPassportGate({
 
   const verifyProps = useMemo((): VerificationOptions | undefined => {
     const chainName = chainId ? ZKPASSPORT_CHAIN_NAME[chainId] : undefined
-    if (!chainId || !chainName || !hookRegistry || policyId === undefined) {
+    if (!chainId || !chainName || !hookRegistry || policyId === undefined || !walletAddress) {
       return undefined
     }
     return {
+      name: 'Uniswap',
+      logo: 'https://app.uniswap.org/favicon.png',
       mintCredential: {
         chain: chainName as NonNullable<VerificationOptions['mintCredential']>['chain'],
         onchainPolicyId: `0x${policyId.toString(16).padStart(64, '0')}`,
+        // The credential is bound to the wallet bidding here, which is the one the gate reads
+        recipient: assume0xAddress(walletAddress),
       },
       popupUrl: ZKPASSPORT_POPUP_URL,
       windowMode: 'tab',
@@ -120,9 +124,7 @@ export function useZkPassportGate({
       // is requested, which switches to the testnet registries — so testnet
       // chains only verify dev-mode proofs.
       devMode: isTestnetChain(chainId),
-      // The recipient account is chosen inside the popup; the gate only
-      // unlocks if it matches the wallet connected here, so re-check the
-      // credential balance on any outcome, including an early close.
+      // Re-check the credential balance on any outcome, including an early close.
       onSuccess: () => {
         refetchBalance().catch(() => undefined)
       },
@@ -130,7 +132,7 @@ export function useZkPassportGate({
         refetchBalance().catch(() => undefined)
       },
     }
-  }, [chainId, hookRegistry, policyId, refetchBalance])
+  }, [chainId, hookRegistry, policyId, walletAddress, refetchBalance])
 
   return useMemo(
     () => ({
