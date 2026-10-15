@@ -2,7 +2,7 @@ import { PERMANENT_TIMELOCK_REQUEST_SECONDS, isPermanentTimelock } from '@uniswa
 import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 import { UniverseChainId } from '@universe/chains'
 import type { CurrencyInfo } from 'uniswap/src/features/dataApi/types'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { zeroAddress } from '~/chains'
 import { buildCreateAuctionRequest } from '~/pages/Liquidity/CreateAuction/buildCreateAuctionRequest'
 import { createCreateAuctionStore } from '~/pages/Liquidity/CreateAuction/store/createCreateAuctionStore'
@@ -14,6 +14,13 @@ const SALT = '0x4b8637a788454d5fdc1283dc54a4526524fdb200665d766c53183298b311cbf3
 const UNI_ADDRESS = '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'
 /** UNI: 1e9 tokens × 1e18 decimals — a real existing-token total supply. */
 const UNI_TOTAL_SUPPLY_RAW = '1000000000000000000000000000'
+
+const ZKPASSPORT_HOOK = '0x2222222222222222222222222222222222222222'
+const KYC_HOOK = '0x6666666666666666666666666666666666666666'
+const ZKPASSPORT_POLICY = '0x000000000000000000000000000000000000000000000000000000000000007b'
+
+const { mockZkPassportHooks } = vi.hoisted(() => ({ mockZkPassportHooks: {} as Record<number, string> }))
+vi.mock('~/features/Toucan/ZkPassport/config', () => ({ ZKPASSPORT_VALIDATION_HOOKS: mockZkPassportHooks }))
 
 type Store = ReturnType<typeof createCreateAuctionStore>
 
@@ -392,6 +399,39 @@ describe('buildCreateAuctionRequest', () => {
       const request = build(store)
       expect(request?.pool?.poolOwner).toBe(WALLET_ADDRESS)
       expect(request?.pool?.liquidityLock).toBeUndefined()
+    })
+  })
+
+  describe('validation hook', () => {
+    beforeEach(() => {
+      mockZkPassportHooks[UniverseChainId.Mainnet] = ZKPASSPORT_HOOK
+    })
+
+    it('names the ZKPassport hook when a ZKPassport policy is chosen', () => {
+      const store = buildableStore()
+      store.getState().actions.setZkPassportPolicyId(ZKPASSPORT_POLICY)
+
+      expect(build(store)?.auction?.validationHook).toBe(ZKPASSPORT_HOOK)
+    })
+
+    it('names the hook chosen last, since an auction has one', () => {
+      const zkPassportLast = buildableStore()
+      zkPassportLast.getState().actions.setKycValidationHookAddress(KYC_HOOK)
+      zkPassportLast.getState().actions.setZkPassportPolicyId(ZKPASSPORT_POLICY)
+      const kycLast = buildableStore()
+      kycLast.getState().actions.setZkPassportPolicyId(ZKPASSPORT_POLICY)
+      kycLast.getState().actions.setKycValidationHookAddress(KYC_HOOK)
+
+      expect(build(zkPassportLast)?.auction?.validationHook).toBe(ZKPASSPORT_HOOK)
+      expect(build(kycLast)?.auction?.validationHook).toBe(KYC_HOOK)
+    })
+
+    it('suppresses the request when the chain has no ZKPassport hook, rather than launching ungated', () => {
+      delete mockZkPassportHooks[UniverseChainId.Mainnet]
+      const store = buildableStore()
+      store.getState().actions.setZkPassportPolicyId(ZKPASSPORT_POLICY)
+
+      expect(build(store)).toBeUndefined()
     })
   })
 

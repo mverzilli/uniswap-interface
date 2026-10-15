@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdvancedSettingsSeparator } from '~/pages/Liquidity/CreateAuction/components/AdvancedSettingsSeparator'
 import { KycCard } from '~/pages/Liquidity/CreateAuction/components/KycCard'
+import { ZkPassportCard } from '~/pages/Liquidity/CreateAuction/components/ZkPassportCard'
 
 export function AuctionAdvancedSettings() {
   const { t } = useTranslation()
@@ -23,8 +24,13 @@ export function AuctionAdvancedSettings() {
             </Text>
           </Flex>
 
-          <Flex width="50%">
-            <KycCard />
+          <Flex row gap="$spacing12" width="100%" $md={{ flexDirection: 'column' }}>
+            <Flex flex={1}>
+              <KycCard />
+            </Flex>
+            <Flex flex={1}>
+              <ZkPassportCard />
+            </Flex>
           </Flex>
         </Flex>
       )}

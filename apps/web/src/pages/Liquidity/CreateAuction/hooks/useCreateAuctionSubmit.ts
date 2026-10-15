@@ -24,6 +24,7 @@ import {
   EmissionScheduleError,
   getAuctionEmissionScheduleError,
 } from '~/pages/Liquidity/CreateAuction/utils/emissionSchedule'
+import { buildValidationHookRegistration } from '~/state/sagas/createAuction/validationHookRegistration'
 
 /**
  * Thrown at launch time when the chosen start time has already passed — possible when the user
@@ -323,6 +324,26 @@ export function useCreateAuctionSubmit(params: UseCreateAuctionSubmitParams): Us
 
       if (transactions.length !== response.transactions.length) {
         throw new Error('CreateAuction returned an invalid transaction request')
+      }
+
+      // A ZKPassport-gated auction is registered with the validation hook right before the launch creates it.
+      const validationHook = request.auction?.validationHook
+      const launch = transactions.at(-1)
+      if (configureAuction.zkPassportPolicyId && validationHook && launch) {
+        const registration = validateTransactionRequest({
+          ...buildValidationHookRegistration({
+            validationHook,
+            auction: response.predictedAuctionAddress,
+            policyId: configureAuction.zkPassportPolicyId,
+          }),
+          from: walletAddress,
+          value: '0',
+          chainId: launch.chainId,
+        })
+        if (!registration) {
+          throw new Error('Could not build the ZKPassport validation hook registration')
+        }
+        transactions.splice(-1, 0, registration)
       }
 
       const submitResult: CreateAuctionSubmitResult = {

@@ -16,6 +16,12 @@ import { TokenMode } from '~/pages/Liquidity/CreateAuction/types'
 import { MS_PER_DAY } from '~/pages/Liquidity/CreateAuction/utils/duration'
 
 const WALLET = '0xF570F45f598fD48AF83FABD692629a2caFe899ec'
+const ZKPASSPORT_HOOK = '0x2222222222222222222222222222222222222222'
+const PREDICTED_AUCTION = '0x5555555555555555555555555555555555555555'
+
+vi.mock('~/features/Toucan/ZkPassport/config', () => ({
+  ZKPASSPORT_VALIDATION_HOOKS: { 1: '0x2222222222222222222222222222222222222222' },
+}))
 
 const mockMutateAsync = vi.fn()
 const mockMutationState = { isPending: false }
@@ -342,6 +348,46 @@ describe('useCreateAuctionSubmit', () => {
     expect(returned?.predictedAuctionAddress).toBe('0xAuction')
     expect(returned?.requestId).toBe('req-1')
     expect(result.current.error).toBeUndefined()
+  })
+
+  it('registers a ZKPassport-gated auction with the validation hook right before the launch', async () => {
+    const approval = {
+      to: '0x7777777777777777777777777777777777777777',
+      from: WALLET,
+      data: '0x',
+      value: '0x0',
+      chainId: 1,
+    }
+    const launch = {
+      to: '0x8888888888888888888888888888888888888888',
+      from: WALLET,
+      data: '0x',
+      value: '0x0',
+      chainId: 1,
+    }
+    mockMutateAsync.mockResolvedValue({
+      transactions: [approval, launch],
+      predictedTokenAddress: '0xToken',
+      predictedAuctionAddress: PREDICTED_AUCTION,
+      atomicallyBundleable: true,
+      requestId: 'req-1',
+    })
+    mockValidate.mockImplementation((req: unknown) => req)
+    const params = buildableParams()
+    params.configureAuction = { ...params.configureAuction, zkPassportPolicyId: '0x7b' }
+
+    const { result } = renderHook(() => useCreateAuctionSubmit(params))
+    let returned: Awaited<ReturnType<typeof result.current.onLaunch>>
+    await act(async () => {
+      returned = await result.current.onLaunch()
+    })
+
+    expect(returned?.transactions.map((tx) => tx.to)).toEqual([approval.to, ZKPASSPORT_HOOK, launch.to])
+    expect(returned?.transactions[1]).toMatchObject({
+      from: WALLET,
+      chainId: 1,
+      data: expect.stringContaining(PREDICTED_AUCTION.slice(2)),
+    })
   })
 
   it('throws when a returned transaction fails validation', async () => {

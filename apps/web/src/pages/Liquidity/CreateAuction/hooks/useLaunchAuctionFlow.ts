@@ -22,6 +22,7 @@ import { useAuctionLaunch } from '~/hooks/useAuctionLaunch'
 import { useNavigateToAuctionDetails } from '~/hooks/useNavigateToAuctionDetails'
 import { LaunchProgressStep } from '~/pages/Liquidity/CreateAuction/components/LaunchAuctionProgressIndicator'
 import type { CreateAuctionSubmitResult } from '~/pages/Liquidity/CreateAuction/hooks/useCreateAuctionSubmit'
+import { isValidationHookRegistration } from '~/state/sagas/createAuction/validationHookRegistration'
 import { useTransactionByHashOrBatchId } from '~/state/transactions/hooks'
 import { coerceUnknownToError } from '~/utils/coerceUnknownToError'
 import { didUserReject } from '~/utils/swapErrorToUserReadableMessage'
@@ -307,11 +308,17 @@ export function useLaunchAuctionFlow({
   }, [awaitingConfirmationRedirect, isLaunchConfirmed, navigateToAuction])
 
   const progressSteps = useMemo<LaunchProgressStep[]>(() => {
-    // The launch multicall is always last; any earlier txs are ERC20 approvals (existing-token path).
+    // The launch multicall is always last; any earlier txs are ERC20 approvals (existing-token path), or the
+    // registration of a ZKPassport-gated auction with its validation hook.
     const txs = preparedResult?.transactions ?? []
-    return txs.map((_, index) =>
-      index === txs.length - 1 ? LaunchProgressStep.PendingConfirmation : LaunchProgressStep.ApproveToken,
-    )
+    return txs.map((tx, index) => {
+      if (index === txs.length - 1) {
+        return LaunchProgressStep.PendingConfirmation
+      }
+      return isValidationHookRegistration(tx.data)
+        ? LaunchProgressStep.RegisterZkPassportPolicy
+        : LaunchProgressStep.ApproveToken
+    })
   }, [preparedResult])
 
   const currentProgressStepIndex = useMemo<number>(() => {

@@ -7,6 +7,10 @@ import {
   createSwapTransactionStep,
   createSwapTransactionStepWalletCall,
 } from 'uniswap/src/features/transactions/swap/steps/swap'
+import {
+  TransactionType,
+  type UnknownTransactionInfo,
+} from 'uniswap/src/features/transactions/types/transactionDetails'
 import type { ValidatedTransactionRequest } from 'uniswap/src/features/transactions/types/transactionRequests'
 import { parseERC20ApproveCalldata } from 'uniswap/src/utils/approvals'
 import { createSaga } from 'uniswap/src/utils/saga'
@@ -14,6 +18,7 @@ import { logger } from 'utilities/src/logger/logger'
 import { popupRegistry } from '~/state/popups/registry'
 import { PopupType } from '~/state/popups/types'
 import type { SubmitAuctionLaunchParams } from '~/state/sagas/createAuction/types'
+import { isValidationHookRegistration } from '~/state/sagas/createAuction/validationHookRegistration'
 import { handleAtomicSendCalls } from '~/state/sagas/transactions/5792'
 import { getDisplayableError, handleApprovalTransactionStep, handleOnChainStep } from '~/state/sagas/transactions/utils'
 import { selectIsAtomicBatchingSupportedByChainId } from '~/state/walletCapabilities/reducer'
@@ -107,12 +112,28 @@ export function* submitAuctionLaunch(params: SubmitAuctionLaunchParams) {
       return
     }
 
-    // The launch multicall is always last; any earlier txs are ERC20 approval steps (existing-token path).
+    // The launch multicall is always last; any earlier txs are ERC20 approval steps (existing-token path),
+    // or the registration of a ZKPassport-gated auction with its validation hook.
     const launchStepIndex = transactions.length - 1
     let launchHash: string | undefined
 
     for (const [index, tx] of transactions.entries()) {
       const txWithGas = yield* call(populateGasServiceParams, tx)
+
+      if (index !== launchStepIndex && isValidationHookRegistration(tx.data)) {
+        // Wait for the registration to confirm: it reverts when someone else registered the auction first,
+        // and the launch must not go out then.
+        const registrationInfo: UnknownTransactionInfo = { type: TransactionType.Unknown, dappInfo: info.dappInfo }
+        yield* call(handleOnChainStep, {
+          address: account.address,
+          step: createSwapTransactionStep(txWithGas),
+          info: registrationInfo,
+          setCurrentStep,
+          shouldWaitForConfirmation: true,
+          ignoreInterrupt: true,
+        })
+        continue
+      }
 
       if (index !== launchStepIndex) {
         // Approval (existing-token path): handle it as a real approval step so we wait for it to
