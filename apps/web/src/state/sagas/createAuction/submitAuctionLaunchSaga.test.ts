@@ -178,6 +178,7 @@ describe('submitAuctionLaunch', () => {
     expect(registrationEffect.payload.fn).toBe(handleOnChainStep)
     expect(registrationEffect.payload.args[0]).toMatchObject({
       shouldWaitForConfirmation: true,
+      allowDuplicativeTx: true,
       info: { type: TransactionType.Unknown },
     })
     gen.next('0xregistration') // registration confirmed -> call(populateGasServiceParams) for the launch

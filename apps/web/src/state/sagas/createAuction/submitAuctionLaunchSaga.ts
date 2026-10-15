@@ -131,6 +131,8 @@ export function* submitAuctionLaunch(params: SubmitAuctionLaunchParams) {
           setCurrentStep,
           shouldWaitForConfirmation: true,
           ignoreInterrupt: true,
+          // Every registration shares this info, so a recent one would otherwise pass for this one.
+          allowDuplicativeTx: true,
         })
         continue
       }
