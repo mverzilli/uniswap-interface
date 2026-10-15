@@ -7,7 +7,9 @@ export interface ZkPassportPolicy {
 }
 
 /** SingletonGatedERC1155ValidationHook deployments: the validation hook of ZKPassport-gated auctions, by chain. */
-export const ZKPASSPORT_VALIDATION_HOOKS: Partial<Record<UniverseChainId, string>> = {}
+export const ZKPASSPORT_VALIDATION_HOOKS: Partial<Record<UniverseChainId, string>> = {
+  [UniverseChainId.Sepolia]: '0x45448d875F74a710805e220878B326F95F7f3E8E',
+}
 
 /** Policies offered to auction creators, by chain. A creator may also enter any other policy id. */
 export const ZKPASSPORT_DEFAULT_POLICIES: Partial<Record<UniverseChainId, ZkPassportPolicy[]>> = {
