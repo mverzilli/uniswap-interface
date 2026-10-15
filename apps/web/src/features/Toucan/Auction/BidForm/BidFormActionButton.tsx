@@ -1,8 +1,16 @@
 import { KycVerificationStatus } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
+import { lazy, Suspense } from 'react'
 import { ToucanGeoRestrictionCard } from '~/components/GeoRestriction/ToucanGeoRestrictionCard'
 import type { useAuctionKycStatus } from '~/features/Toucan/Auction/hooks/useAuctionKycStatus'
 import { KycActionButton } from '~/features/Toucan/Shared/KycActionButton'
 import { ToucanActionButton } from '~/features/Toucan/Shared/ToucanActionButton'
+import { useZkPassportPolicyId } from '~/features/Toucan/ZkPassport/useZkPassportPolicyId'
+
+const ZkPassportVerifyButton = lazy(() =>
+  import('~/features/Toucan/ZkPassport/ZkPassportVerifyButton').then((module) => ({
+    default: module.ZkPassportVerifyButton,
+  })),
+)
 
 interface BidFormActionButtonProps {
   isGeoRestricted: boolean
@@ -34,15 +42,20 @@ export function BidFormActionButton({
   onKycRejected,
   onKycInterstitial,
 }: BidFormActionButtonProps): JSX.Element {
-  const showKycButton =
-    !isGeoRestricted &&
-    !needsTestnetModeSwitch &&
-    isWalletConnected &&
-    Boolean(kycStatus.kycButtonLabel || kycStatus.whitelistLabel)
+  const zkPassportPolicyId = useZkPassportPolicyId({ hasErc1155Gate: kycStatus.auctionHasPresale })
+
+  const canShowVerification = !isGeoRestricted && !needsTestnetModeSwitch && isWalletConnected
+  // An ERC-1155 gate on a ZKPassport credential is passed by minting the credential, not by waiting for an allowlist.
+  const showZkPassportButton = canShowVerification && zkPassportPolicyId !== undefined && !kycStatus.isAllowlisted
+  const showKycButton = canShowVerification && Boolean(kycStatus.kycButtonLabel || kycStatus.whitelistLabel)
 
   return (
     <>
-      {showKycButton ? (
+      {showZkPassportButton ? (
+        <Suspense fallback={null}>
+          <ZkPassportVerifyButton policyId={zkPassportPolicyId} />
+        </Suspense>
+      ) : showKycButton ? (
         <KycActionButton
           kycStatus={kycStatus}
           onPress={() =>
