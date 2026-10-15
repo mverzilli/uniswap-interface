@@ -47,11 +47,6 @@ export function buildVerifyWalletParams({
   }
 }
 
-/** The react-query key of the VerifyWallet query for `params`, for invalidating it after a wallet's status changes. */
-export function getVerifyWalletQueryKey(params: PartialMessage<VerifyWalletRequest>): readonly unknown[] {
-  return [ReactQueryCacheKey.LiquidityService, 'verifyWallet', params]
-}
-
 /**
  * Hook to verify a wallet's KYC status for an auction.
  *
@@ -78,7 +73,7 @@ export function useVerifyWalletQuery(
   const enabled = Boolean(params.walletAddress && params.auctionAddress && params.chainId)
 
   const verifyWalletQuery = useQuery({
-    queryKey: getVerifyWalletQueryKey(params),
+    queryKey: [ReactQueryCacheKey.LiquidityService, 'verifyWallet', params],
     queryFn: () => {
       return AuctionQueryClient.verifyWallet({
         ...params,

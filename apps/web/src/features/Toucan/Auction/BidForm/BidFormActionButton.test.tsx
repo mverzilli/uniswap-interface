@@ -4,6 +4,7 @@ import type { VerifyWithZKPassportProps } from '@zkpassport/ui/react-button'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BidFormActionButton } from '~/features/Toucan/Auction/BidForm/BidFormActionButton'
 import type { AuctionKycStatus } from '~/features/Toucan/Auction/hooks/useAuctionKycStatus'
+import type { ZkPassportGate } from '~/features/Toucan/ZkPassport/useZkPassportGate'
 import { render, screen } from '~/test-utils/render'
 
 const WALLET = '0x3333333333333333333333333333333333333333'
@@ -16,9 +17,6 @@ vi.mock('~/features/accounts/store/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('~/features/accounts/store/hooks')>()),
   useActiveAddress: () => WALLET,
 }))
-vi.mock('~/features/Toucan/Auction/hooks/useVerifyWalletParams', () => ({
-  useVerifyWalletParams: () => ({ walletAddress: WALLET }),
-}))
 
 // jsdom cannot parse the real button's stylesheet.
 const { mockVerifyWithZKPassport } = vi.hoisted(() => ({
@@ -30,34 +28,28 @@ vi.mock('@zkpassport/ui/react-button', () => ({
   VerifyWithZKPassport: (props: VerifyWithZKPassportProps) => mockVerifyWithZKPassport(props),
 }))
 
-let mockZkPassportPolicyId: string | undefined
-vi.mock('~/features/Toucan/ZkPassport/useZkPassportPolicyId', () => ({
-  useZkPassportPolicyId: () => mockZkPassportPolicyId,
-}))
-
-function erc1155GateStatus({ isAllowlisted }: { isAllowlisted: boolean }): AuctionKycStatus {
-  return {
-    canBid: true,
-    whitelistLabel: isAllowlisted ? undefined : 'General sale starts soon',
-    kycButtonDisabled: false,
-    onKycAction: undefined,
-    isLoading: false,
-    isError: false,
-    isAllowlisted,
-    auctionHasPresale: true,
-    auctionNeedsVerification: false,
-    status: KycVerificationStatus.VERIFICATION_STATUS_UNSPECIFIED,
-    hasNoRecognizedValidations: false,
-  }
+// What VerifyWallet reports for an auction on the ZKPassport hook, which the backend does not model.
+const unmodeledHookStatus: AuctionKycStatus = {
+  canBid: true,
+  kycButtonDisabled: false,
+  onKycAction: undefined,
+  isLoading: false,
+  isError: false,
+  isAllowlisted: false,
+  auctionHasPresale: false,
+  auctionNeedsVerification: false,
+  status: KycVerificationStatus.VERIFICATION_STATUS_UNSPECIFIED,
+  hasNoRecognizedValidations: true,
 }
 
-function renderActionButton(kycStatus: AuctionKycStatus): void {
+function renderActionButton(zkPassportGate: ZkPassportGate): void {
   render(
     <BidFormActionButton
       isGeoRestricted={false}
       needsTestnetModeSwitch={false}
       isWalletConnected
-      kycStatus={kycStatus}
+      kycStatus={unmodeledHookStatus}
+      zkPassportGate={zkPassportGate}
       buttonLabel="Review bid"
       buttonDisabled={false}
       onButtonPress={vi.fn()}
@@ -70,34 +62,26 @@ function renderActionButton(kycStatus: AuctionKycStatus): void {
 describe('BidFormActionButton', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockZkPassportPolicyId = 'eip155:11155111:0x7b'
   })
 
-  it('offers ZKPassport verification to a wallet without the credential the gate requires', async () => {
-    renderActionButton(erc1155GateStatus({ isAllowlisted: false }))
+  it('offers ZKPassport verification to a wallet the gate blocks', async () => {
+    const refetchCredential = vi.fn()
+
+    renderActionButton({ policyId: 'eip155:11155111:0x7b', canBid: false, refetchCredential })
 
     expect(await screen.findByRole('button', { name: 'Verify identity to bid' })).toBeInTheDocument()
     expect(mockVerifyWithZKPassport.mock.lastCall?.[0]).toMatchObject({
       mint: true,
       policyId: 'eip155:11155111:0x7b',
       bind: { account: WALLET, chainId: UniverseChainId.Sepolia },
+      onSuccess: refetchCredential,
     })
-    expect(screen.queryByText('General sale starts soon')).not.toBeInTheDocument()
   })
 
-  it('offers the bid once the wallet holds the credential', () => {
-    renderActionButton(erc1155GateStatus({ isAllowlisted: true }))
+  it('offers the bid to a wallet the gate lets through', () => {
+    renderActionButton({ policyId: 'eip155:11155111:0x7b', canBid: true, refetchCredential: vi.fn() })
 
     expect(screen.getByText('Review bid')).toBeInTheDocument()
-    expect(mockVerifyWithZKPassport).not.toHaveBeenCalled()
-  })
-
-  it('keeps the allowlist label for an ERC-1155 gate on any other token', () => {
-    mockZkPassportPolicyId = undefined
-
-    renderActionButton(erc1155GateStatus({ isAllowlisted: false }))
-
-    expect(screen.getByText('General sale starts soon')).toBeInTheDocument()
     expect(mockVerifyWithZKPassport).not.toHaveBeenCalled()
   })
 })

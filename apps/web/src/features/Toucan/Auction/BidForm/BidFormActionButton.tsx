@@ -4,7 +4,7 @@ import { ToucanGeoRestrictionCard } from '~/components/GeoRestriction/ToucanGeoR
 import type { useAuctionKycStatus } from '~/features/Toucan/Auction/hooks/useAuctionKycStatus'
 import { KycActionButton } from '~/features/Toucan/Shared/KycActionButton'
 import { ToucanActionButton } from '~/features/Toucan/Shared/ToucanActionButton'
-import { useZkPassportPolicyId } from '~/features/Toucan/ZkPassport/useZkPassportPolicyId'
+import type { ZkPassportGate } from '~/features/Toucan/ZkPassport/useZkPassportGate'
 
 const ZkPassportVerifyButton = lazy(() =>
   import('~/features/Toucan/ZkPassport/ZkPassportVerifyButton').then((module) => ({
@@ -18,6 +18,7 @@ interface BidFormActionButtonProps {
   needsTestnetModeSwitch: boolean
   isWalletConnected: boolean
   kycStatus: ReturnType<typeof useAuctionKycStatus>
+  zkPassportGate?: ZkPassportGate
   buttonLabel: string
   buttonDisabled: boolean
   onButtonPress: () => void
@@ -36,24 +37,22 @@ export function BidFormActionButton({
   needsTestnetModeSwitch,
   isWalletConnected,
   kycStatus,
+  zkPassportGate,
   buttonLabel,
   buttonDisabled,
   onButtonPress,
   onKycRejected,
   onKycInterstitial,
 }: BidFormActionButtonProps): JSX.Element {
-  const zkPassportPolicyId = useZkPassportPolicyId({ hasErc1155Gate: kycStatus.auctionHasPresale })
-
   const canShowVerification = !isGeoRestricted && !needsTestnetModeSwitch && isWalletConnected
-  // An ERC-1155 gate on a ZKPassport credential is passed by minting the credential, not by waiting for an allowlist.
-  const showZkPassportButton = canShowVerification && zkPassportPolicyId !== undefined && !kycStatus.isAllowlisted
+  const showZkPassportButton = canShowVerification && zkPassportGate !== undefined && !zkPassportGate.canBid
   const showKycButton = canShowVerification && Boolean(kycStatus.kycButtonLabel || kycStatus.whitelistLabel)
 
   return (
     <>
       {showZkPassportButton ? (
         <Suspense fallback={null}>
-          <ZkPassportVerifyButton policyId={zkPassportPolicyId} />
+          <ZkPassportVerifyButton policyId={zkPassportGate.policyId} onMinted={zkPassportGate.refetchCredential} />
         </Suspense>
       ) : showKycButton ? (
         <KycActionButton
