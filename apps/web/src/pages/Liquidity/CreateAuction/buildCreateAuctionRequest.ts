@@ -7,7 +7,9 @@ import {
 } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/auction_pb'
 import { ChainId } from '@uniswap/client-liquidity/dist/uniswap/liquidity/v1/types_pb'
 import { UNBOUNDED_PERCENT } from '@uniswap/liquidity-launcher-sdk'
+import { isUniverseChainId } from 'uniswap/src/features/chains/utils'
 import { isAddress, zeroAddress } from '~/chains'
+import { ZKPASSPORT_VALIDATION_HOOKS } from '~/features/Toucan/ZkPassport/config'
 import {
   type ConfigureAuctionFormState,
   type CustomizePoolState,
@@ -351,6 +353,11 @@ export function buildCreateAuctionRequest(
   const auctionSupplyRaw = isNewToken ? totalSupplyRaw : auctionedSliceRaw
   const returnedSupplyRaw = isNewToken ? totalSupplyRaw - auctionedSliceRaw : 0n
 
+  const validationHook = resolveValidationHook({ configureAuction, chainId: universeChainId })
+  if (!validationHook) {
+    return undefined
+  }
+
   const burnLiquidity = shouldBurnLiquidity(customizePool)
   const resolvedPoolOwner = isAddress(customizePool.poolOwner) ? customizePool.poolOwner : walletAddress
 
@@ -400,7 +407,7 @@ export function buildCreateAuctionRequest(
       // tokens and a 100%-auctioned new token.
       auctionSupply: auctionSupplyRaw.toString(),
       returnedSupply: returnedSupplyRaw > 0n ? returnedSupplyRaw.toString() : undefined,
-      validationHook: configureAuction.kycValidationHookAddress || undefined,
+      validationHook: validationHook.address,
     },
     pool: {
       fee: customizePool.fee.feeAmount,
@@ -416,4 +423,23 @@ export function buildCreateAuctionRequest(
         : toLiquidityLock(customizePool, configureAuction),
     },
   }
+}
+
+/**
+ * The validation hook the auction names: the KYC hook, or the ZKPassport hook when a ZKPassport policy is chosen.
+ * Undefined when a policy is chosen on a chain without the ZKPassport hook, where the auction would be ungated.
+ */
+function resolveValidationHook({
+  configureAuction,
+  chainId,
+}: {
+  configureAuction: ConfigureAuctionFormState
+  chainId: number
+}): { address: string | undefined } | undefined {
+  if (!configureAuction.zkPassportPolicyId) {
+    return { address: configureAuction.kycValidationHookAddress || undefined }
+  }
+
+  const zkPassportHook = isUniverseChainId(chainId) ? ZKPASSPORT_VALIDATION_HOOKS[chainId] : undefined
+  return zkPassportHook ? { address: zkPassportHook } : undefined
 }

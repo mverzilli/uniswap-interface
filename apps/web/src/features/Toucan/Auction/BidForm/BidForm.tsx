@@ -43,6 +43,7 @@ import { AuctionProgressState } from '~/features/Toucan/Auction/store/types'
 import { useAuctionStore, useAuctionStoreActions } from '~/features/Toucan/Auction/store/useAuctionStore'
 import { getRequiredTestnetMode } from '~/features/Toucan/Shared/getRequiredTestnetMode'
 import { shouldShowAuctionTokenWarning } from '~/features/Toucan/utils/auctionTokenProtection'
+import { isZkPassportValidationHook, useZkPassportGate } from '~/features/Toucan/ZkPassport/useZkPassportGate'
 
 const VerticalLineContainer = styled('div', {
   platform: 'web',
@@ -143,6 +144,7 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
     chainId,
     currentBlockNumber,
   })
+  const zkPassportGate = useZkPassportGate()
 
   const { showDisabledState, shouldShowWarningBanner, shouldDisableBidForm, showMaxBidPriceReachedState } =
     useBidFormWarningState({
@@ -163,8 +165,12 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
       // plus an unmodeled leg returns a non-empty array, so this stays false and bidding
       // proceeds against the uninspected leg. The response cannot express "recognized in
       // part", so closing that needs a backend signal rather than a client predicate.
+      //
+      // The ZKPassport hook is not modeled by the backend; useZkPassportGate reads it on-chain instead.
       isUnmodeledValidationHook:
-        Boolean(validationHook && validationHook !== zeroAddress) && kycStatus.hasNoRecognizedValidations,
+        Boolean(validationHook && validationHook !== zeroAddress) &&
+        kycStatus.hasNoRecognizedValidations &&
+        !isZkPassportValidationHook({ chainId, validationHook }),
     })
 
   const handleButtonPress = (): void => {
@@ -348,6 +354,7 @@ export function BidForm({ onInputChange, onBidSubmitted }: BidFormProps): JSX.El
             needsTestnetModeSwitch={needsTestnetModeSwitch}
             isWalletConnected={isWalletConnected}
             kycStatus={kycStatus}
+            zkPassportGate={zkPassportGate}
             buttonLabel={buttonLabel}
             buttonDisabled={buttonDisabled}
             onButtonPress={handleButtonPress}

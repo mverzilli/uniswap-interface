@@ -1,4 +1,6 @@
+import { isEVMChain } from '@universe/chains'
 import { Button, Flex, Text, TouchableArea } from '@universe/mycelium'
+import { CheckboxCompat as Checkbox } from '@universe/mycelium/checkbox-compat'
 import { Check } from '@universe/mycelium/icons/Check'
 import { UserCheck } from '@universe/mycelium/icons/UserCheck'
 import { X } from '@universe/mycelium/icons/X'
@@ -6,7 +8,10 @@ import { type PropsWithChildren, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { UniswapHelpUrls } from 'uniswap/src/constants/urls'
 import { shortenAddress } from 'utilities/src/addresses'
+import { ZKPASSPORT_VALIDATION_HOOKS } from '~/features/Toucan/ZkPassport/config'
+import { getZkPassportPolicyLabel } from '~/features/Toucan/ZkPassport/policyIds'
 import { KycHookSetupModal } from '~/pages/Liquidity/CreateAuction/components/KycHookSetupModal'
+import { ZkPassportPolicyModal } from '~/pages/Liquidity/CreateAuction/components/ZkPassportPolicyModal'
 import {
   useCreateAuctionStore,
   useCreateAuctionStoreActions,
@@ -55,10 +60,14 @@ export function KycCard() {
   const { t } = useTranslation()
   const [modalOpen, setModalOpen] = useState(false)
   const kycValidationHookAddress = useCreateAuctionStore((s) => s.configureAuction.kycValidationHookAddress)
+  const zkPassportPolicyId = useCreateAuctionStore((s) => s.configureAuction.zkPassportPolicyId)
   const committed = useCreateAuctionStore((s) => s.configureAuction.committed)
-  const { setKycValidationHookAddress } = useCreateAuctionStoreActions()
+  const { setKycValidationHookAddress, setZkPassportPolicyId } = useCreateAuctionStoreActions()
+  const [useZkPassport, setUseZkPassport] = useState(Boolean(zkPassportPolicyId))
 
   const chainId = committed?.totalSupply.currency.chainId
+  const zkPassportChainId = chainId && isEVMChain(chainId) && ZKPASSPORT_VALIDATION_HOOKS[chainId] ? chainId : undefined
+  const isZkPassportChosen = useZkPassport && zkPassportChainId !== undefined
 
   const openModal = useCallback(() => {
     setModalOpen(true)
@@ -76,12 +85,18 @@ export function KycCard() {
     setKycValidationHookAddress(undefined)
   }
 
+  const toggleZkPassport = () => {
+    setUseZkPassport((current) => !current)
+  }
+
   if (!chainId) {
     return null
   }
 
-  if (kycValidationHookAddress) {
-    const short = shortenAddress({ address: kycValidationHookAddress, chars: 6 })
+  if (kycValidationHookAddress || zkPassportPolicyId) {
+    const short = zkPassportPolicyId
+      ? getZkPassportPolicyLabel(chainId, zkPassportPolicyId)
+      : shortenAddress({ address: kycValidationHookAddress, chars: 6 })
 
     return (
       <KycCardShell>
@@ -139,14 +154,40 @@ export function KycCard() {
           <KycDescriptionAndLearnMore />
         </Flex>
 
+        {zkPassportChainId && (
+          <Flex row alignItems="center" gap="$spacing8">
+            <Checkbox size="$icon.16" checked={useZkPassport} onPress={toggleZkPassport} />
+            <TouchableArea onPress={toggleZkPassport}>
+              <Text variant="buttonLabel4" color="$neutral2">
+                {t('toucan.createAuction.step.configureAuction.kyc.useZkPassport')}
+              </Text>
+            </TouchableArea>
+          </Flex>
+        )}
+
         <Flex row>
           <Button size="small" emphasis="secondary" fill onPress={openModal}>
-            {t('toucan.createAuction.step.configureAuction.kyc.setUp')}
+            {isZkPassportChosen
+              ? t('toucan.createAuction.step.configureAuction.zkPassport.setUp')
+              : t('toucan.createAuction.step.configureAuction.kyc.setUp')}
           </Button>
         </Flex>
       </KycCardShell>
 
-      <KycHookSetupModal isOpen={modalOpen} onClose={closeModal} chainId={chainId} onAccepted={handleAccepted} />
+      <KycHookSetupModal
+        isOpen={modalOpen && !isZkPassportChosen}
+        onClose={closeModal}
+        chainId={chainId}
+        onAccepted={handleAccepted}
+      />
+      {zkPassportChainId && (
+        <ZkPassportPolicyModal
+          isOpen={modalOpen && isZkPassportChosen}
+          onClose={closeModal}
+          chainId={zkPassportChainId}
+          onAccepted={setZkPassportPolicyId}
+        />
+      )}
     </>
   )
 }

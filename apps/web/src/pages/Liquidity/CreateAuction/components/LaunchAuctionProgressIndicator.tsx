@@ -1,5 +1,6 @@
 import '~/pages/Liquidity/CreateAuction/components/LaunchAuctionProgressIndicator.css'
 import { Flex, getTokenValue, Separator, Text } from '@universe/mycelium'
+import { UserCheck } from '@universe/mycelium/icons/UserCheck'
 import { useSporeColors } from '@universe/mycelium/theme-hooks-compat'
 import { TestID } from '@universe/test'
 import { useTranslation } from 'react-i18next'
@@ -25,6 +26,7 @@ function LaunchIcon(): JSX.Element {
 
 export enum LaunchProgressStep {
   ApproveToken = 'ApproveToken',
+  RegisterZkPassportPolicy = 'RegisterZkPassportPolicy',
   PendingConfirmation = 'PendingConfirmation',
 }
 
@@ -53,6 +55,16 @@ export function LaunchAuctionProgressIndicator({
     return StepStatus.Complete
   }
 
+  function getStepTitle(step: LaunchProgressStep): string {
+    if (step === LaunchProgressStep.ApproveToken) {
+      return t('common.approveSpend', { symbol: tokenSymbol })
+    }
+    if (step === LaunchProgressStep.RegisterZkPassportPolicy) {
+      return t('toucan.createAuction.registerZkPassportPolicy')
+    }
+    return t('toucan.createAuction.launchToken')
+  }
+
   if (steps.length === 0) {
     return null
   }
@@ -75,14 +87,21 @@ export function LaunchAuctionProgressIndicator({
           const nextStepStatus = isNotLastStep ? getStatus(index + 1) : null
           const isActiveAdjacent = stepStatus === StepStatus.Active || nextStepStatus === StepStatus.Active
           const isApproval = step === LaunchProgressStep.ApproveToken
+          const isZkPassportRegistration = step === LaunchProgressStep.RegisterZkPassportPolicy
           return (
             <Flex key={`launch-progress-step-${index}`}>
               <StepRowSkeleton
                 status={stepStatus}
-                title={
-                  isApproval ? t('common.approveSpend', { symbol: tokenSymbol }) : t('toucan.createAuction.launchToken')
+                title={getStepTitle(step)}
+                icon={
+                  isApproval ? (
+                    <CreateAuctionTokenLogo size={iconSize} hideNetworkLogo />
+                  ) : isZkPassportRegistration ? (
+                    <UserCheck color="$neutral1" size={iconSize} />
+                  ) : (
+                    <LaunchIcon />
+                  )
                 }
-                icon={isApproval ? <CreateAuctionTokenLogo size={iconSize} hideNetworkLogo /> : <LaunchIcon />}
                 learnMore={
                   isApproval
                     ? { url: UniswapHelpUrls.articles.approvalsExplainer, text: t('common.whyApprove') }

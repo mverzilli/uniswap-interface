@@ -1,3 +1,4 @@
+/* oxlint-disable max-lines */
 import { CurrencyAmount, Token } from '@uniswap/sdk-core'
 import { isDevEnv } from '@universe/environment'
 import type { FeeData } from 'uniswap/src/features/positions/types'
@@ -315,8 +316,11 @@ export const createCreateAuctionStore = (): CreateAuctionStore =>
             })
           },
           setGraduationPrice: (graduationPrice) => set(patchConfigureAuction({ graduationPrice })),
+          // An auction has one validation hook, so setting the KYC hook or a ZKPassport policy clears the other.
           setKycValidationHookAddress: (kycValidationHookAddress) =>
-            set(patchConfigureAuction({ kycValidationHookAddress })),
+            set(patchConfigureAuction({ kycValidationHookAddress, zkPassportPolicyId: undefined })),
+          setZkPassportPolicyId: (zkPassportPolicyId) =>
+            set(patchConfigureAuction({ zkPassportPolicyId, kycValidationHookAddress: undefined })),
           setFee: (fee: FeeData) => {
             set((state) => ({
               customizePool: { ...state.customizePool, fee },

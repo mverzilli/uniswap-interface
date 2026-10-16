@@ -15,6 +15,7 @@ export const ModalName = {
   AppRatingModal: 'app-rating-modal',
   AuctionCreatorSweep: 'auction-creator-sweep-modal',
   AuctionKycHookSetup: 'auction-kyc-hook-setup-modal',
+  AuctionZkPassportPolicySetup: 'auction-zkpassport-policy-setup-modal',
   BackupReminder: 'backup-reminder-modal',
   BackupReminderWarning: 'backup-reminder-warning-modal',
   Bag: 'bag-modal',

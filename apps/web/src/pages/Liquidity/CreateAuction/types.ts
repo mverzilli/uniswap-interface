@@ -200,6 +200,8 @@ export type ConfigureAuctionFormState = {
    */
   graduationPrice: string | undefined
   kycValidationHookAddress: string | undefined
+  /** ZKPassport policy bidders must hold a credential for; the auction then uses the ZKPassport validation hook */
+  zkPassportPolicyId: string | undefined
 }
 
 export type XVerification = {
@@ -366,6 +368,7 @@ export const DEFAULT_CREATE_AUCTION_STATE: CreateAuctionState = {
     floorPriceInput: undefined,
     graduationPrice: undefined,
     kycValidationHookAddress: undefined,
+    zkPassportPolicyId: undefined,
   },
 }
 
@@ -400,6 +403,7 @@ interface CreateAuctionStoreActions {
   /** Quick-launch handoff only: pins the preset graduation price the create request sends. */
   setGraduationPrice: (price: string | undefined) => void
   setKycValidationHookAddress: (address: string | undefined) => void
+  setZkPassportPolicyId: (policyId: string | undefined) => void
   setFee: (fee: FeeData) => void
   setPriceRangeStrategy: (strategy: PriceRangeStrategy) => void
   addCustomPriceRangePreset: (preset: CustomPriceRangePreset) => void

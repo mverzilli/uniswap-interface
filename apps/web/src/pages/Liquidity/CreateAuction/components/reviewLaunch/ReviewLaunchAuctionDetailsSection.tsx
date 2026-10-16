@@ -10,6 +10,7 @@ import { useLocalizationContext } from 'uniswap/src/features/language/Localizati
 import { shortenAddress } from 'utilities/src/addresses'
 import { NumberType } from 'utilities/src/format/types'
 import { SubscriptZeroPrice } from '~/components/SubscriptZeroPrice'
+import { getZkPassportPolicyLabel } from '~/features/Toucan/ZkPassport/policyIds'
 import {
   ReviewAuctionDateTime,
   ReviewRow,
@@ -287,10 +288,18 @@ export function ReviewLaunchAuctionDetailsSection({
           </TouchableArea>
         ) : (
           <Text variant="body1" $md={{ variant: 'body2' }} color="$neutral1">
-            {t('toucan.details.no')}
+            {configureAuction.zkPassportPolicyId ? t('toucan.details.kyc.zkPassport') : t('toucan.details.no')}
           </Text>
         )}
       </ReviewRow>
+
+      {configureAuction.zkPassportPolicyId ? (
+        <ReviewRow label={t('toucan.details.zkPassport')}>
+          <Text variant="body1" $md={{ variant: 'body2' }} color="$neutral1">
+            {getZkPassportPolicyLabel(chainId, configureAuction.zkPassportPolicyId)}
+          </Text>
+        </ReviewRow>
+      ) : null}
     </Flex>
   )
 }
