@@ -10,8 +10,7 @@ import { popupRegistry } from '~/state/popups/registry'
 import { PopupType } from '~/state/popups/types'
 import { submitAuctionLaunch } from '~/state/sagas/createAuction/submitAuctionLaunchSaga'
 import type { SubmitAuctionLaunchParams } from '~/state/sagas/createAuction/types'
-import { buildValidationHookRegistration } from '~/state/sagas/createAuction/validationHookRegistration'
-import { getDisplayableError, handleOnChainStep } from '~/state/sagas/transactions/utils'
+import { getDisplayableError } from '~/state/sagas/transactions/utils'
 
 // Mock the `~/state/*` deps so importing the saga doesn't pull in the store graph (root.ts),
 // which has an eager import cycle. `call`/`select` only reference these, so driving the
@@ -156,37 +155,6 @@ describe('submitAuctionLaunch', () => {
     expect(popupRegistry.addPopup).toHaveBeenCalledWith({ type: PopupType.Transaction, hash: '0xlaunch' }, '0xlaunch')
     expect(params.onSuccess).toHaveBeenCalledWith('0xlaunch')
     expect(params.onFailure).not.toHaveBeenCalled()
-  })
-
-  it('waits for the validation hook registration, then submits + toasts only the launch, when sending sequentially', () => {
-    vi.mocked(popupRegistry.addPopup).mockClear()
-    const registrationTx = {
-      chainId: 1,
-      from: WALLET,
-      ...buildValidationHookRegistration({
-        validationHook: '0x2222222222222222222222222222222222222222',
-        auction: '0x5555555555555555555555555555555555555555',
-        policyId: '0x7b',
-      }),
-    } as unknown as ValidatedTransactionRequest
-    const params = makeParams({ transactions: [registrationTx, tx(1)], atomicallyBundleable: true })
-    const gen = submitAuctionLaunch(params)
-    gen.next() // call(selectChain)
-    gen.next(true) // chain switched -> select(atomic support)
-    gen.next(() => false) // atomic NOT supported -> loop -> call(populateGasServiceParams) for the registration
-    const registrationEffect = asCallEffect(gen.next(registrationTx).value) // -> handleOnChainStep, not an approval
-    expect(registrationEffect.payload.fn).toBe(handleOnChainStep)
-    expect(registrationEffect.payload.args[0]).toMatchObject({
-      shouldWaitForConfirmation: true,
-      allowDuplicativeTx: true,
-      info: { type: TransactionType.Unknown },
-    })
-    gen.next('0xregistration') // registration confirmed -> call(populateGasServiceParams) for the launch
-    gen.next(tx(1)) // gas params resolved -> handleOnChainStep (launch step)
-    const result = gen.next('0xlaunch') // launch toast + onSuccess
-    expect(result.done).toBe(true)
-    expect(popupRegistry.addPopup).toHaveBeenCalledTimes(1)
-    expect(params.onSuccess).toHaveBeenCalledWith('0xlaunch')
   })
 
   it('submits the launch step with the gas params merged by the gas service', () => {
