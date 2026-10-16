@@ -26,7 +26,7 @@ export function ZkPassportVerifyButton({
       mint
       policyId={policyId}
       bind={{ account: assume0xAddress(walletAddress), chainId }}
-      style={{ label: t('toucan.kyc.verifyIdentity') }}
+      style={{ variant: 'outline', label: t('toucan.kyc.verifyIdentityPrivately') }}
       onSuccess={onMinted}
     />
   )

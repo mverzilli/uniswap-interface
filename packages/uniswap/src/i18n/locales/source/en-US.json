@@ -4448,6 +4448,7 @@
   "toucan.kyc.verifyIdentity.pending": "Verification is in progress",
   "toucan.kyc.verifyIdentity.verified": "You have successfully verified your identity and can participate in this auction",
   "toucan.kyc.verifyIdentity.whitelisted": "You are whitelisted to participate in this auction",
+  "toucan.kyc.verifyIdentityPrivately": "Verify identity privately",
   "toucan.launchMethod.crowd": "Crowd Launch",
   "toucan.launchMethod.crowd.description": "Standardized launches that generate locked liquidity and fairly distribute tokens through pre-launch crowdfunding. Launched via pools.xyz.",
   "toucan.launchMethod.crowd.title": "Crowd Launches",
