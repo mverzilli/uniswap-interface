@@ -9,3 +9,5 @@ forge create src/SingletonGatedERC1155ValidationHook.sol:SingletonGatedERC1155Va
   --rpc-url https://ethereum-sepolia-rpc.publicnode.com --account <keystore-account> --broadcast \
   --constructor-args 0x000C558ea450790ad88f4f15A302B8F2C9b60d6C
 ```
+
+On Sepolia it is deployed at [`0x45448d875F74a710805e220878B326F95F7f3E8E`](https://sepolia.etherscan.io/address/0x45448d875F74a710805e220878B326F95F7f3E8E).
