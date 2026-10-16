@@ -81,7 +81,6 @@ export function KycCard() {
     setKycValidationHookAddress(address)
   }
 
-  // Clears a ZKPassport policy too: the store keeps a single validation hook.
   const handleRemove = () => {
     setKycValidationHookAddress(undefined)
   }
