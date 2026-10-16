@@ -288,7 +288,7 @@ export function ReviewLaunchAuctionDetailsSection({
           </TouchableArea>
         ) : (
           <Text variant="body1" $md={{ variant: 'body2' }} color="$neutral1">
-            {t('toucan.details.no')}
+            {configureAuction.zkPassportPolicyId ? t('toucan.details.kyc.zkPassport') : t('toucan.details.no')}
           </Text>
         )}
       </ReviewRow>

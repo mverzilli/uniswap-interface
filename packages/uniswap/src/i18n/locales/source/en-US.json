@@ -4392,6 +4392,7 @@
   "toucan.details.clearingPrice": "Clearing price",
   "toucan.details.duration": "Duration",
   "toucan.details.kyc": "Identity verification",
+  "toucan.details.kyc.zkPassport": "Yes (ZKPassport)",
   "toucan.details.no": "No",
   "toucan.details.now": "Now",
   "toucan.details.postAuctionLiquidity": "Post-auction liquidity",

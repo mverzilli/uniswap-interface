@@ -18,8 +18,15 @@ const committed: AuctionTokenAmounts = {
 const raiseCurrencyInfo = { currency: token } as CurrencyInfo
 
 const PRE_BID_LABEL = i18n.t('toucan.createAuction.step.configureAuction.preBid.startDate')
+const ZKPASSPORT_VERIFICATION = i18n.t('toucan.details.kyc.zkPassport')
 
-function renderSection({ isQuickLaunch }: { isQuickLaunch: boolean }): ReturnType<typeof render> {
+function renderSection({
+  isQuickLaunch,
+  zkPassportPolicyId,
+}: {
+  isQuickLaunch: boolean
+  zkPassportPolicyId?: string
+}): ReturnType<typeof render> {
   const startTime = new Date(Date.now() + MS_PER_DAY)
   return render(
     <ReviewLaunchAuctionDetailsSection
@@ -29,6 +36,7 @@ function renderSection({ isQuickLaunch }: { isQuickLaunch: boolean }): ReturnTyp
         startTime,
         endTime: new Date(startTime.getTime() + 4 * MS_PER_DAY),
         preBidStartTime: new Date(startTime.getTime() - 15 * 60_000),
+        zkPassportPolicyId,
       }}
       committed={committed}
       raiseCurrencyInfo={raiseCurrencyInfo}
@@ -59,5 +67,19 @@ describe('ReviewLaunchAuctionDetailsSection pre-bid row', () => {
     renderSection({ isQuickLaunch: true })
 
     expect(screen.queryByText(PRE_BID_LABEL)).toBeNull()
+  })
+})
+
+describe('ReviewLaunchAuctionDetailsSection identity verification row', () => {
+  it('counts a ZKPassport policy as identity verification', () => {
+    renderSection({ isQuickLaunch: false, zkPassportPolicyId: '0x7b' })
+
+    expect(screen.getByText(ZKPASSPORT_VERIFICATION)).toBeInTheDocument()
+  })
+
+  it('does not mention ZKPassport without a policy', () => {
+    renderSection({ isQuickLaunch: false })
+
+    expect(screen.queryByText(ZKPASSPORT_VERIFICATION)).toBeNull()
   })
 })
