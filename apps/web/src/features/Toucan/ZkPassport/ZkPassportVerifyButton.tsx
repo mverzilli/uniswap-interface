@@ -6,10 +6,10 @@ import { assume0xAddress } from '~/chains'
 import { useActiveAddress } from '~/features/accounts/store/hooks'
 import { useAuctionStore } from '~/features/Toucan/Auction/store/useAuctionStore'
 
-// ZKPassport's button stops at 360px, narrower than the bid panel, so it sits centered.
-const Centered = styled('div', {
+// ZKPassport's button stops at 360px, narrower than the bid panel, so it sits at the panel's right edge.
+const RightAligned = styled('div', {
   platform: 'web',
-  base: 'flex w-full justify-center',
+  base: 'flex w-full justify-end',
 })
 
 /** Opens ZKPassport to mint the credential `policyId` defines to the connected wallet. */
@@ -29,7 +29,7 @@ export function ZkPassportVerifyButton({
   }
 
   return (
-    <Centered>
+    <RightAligned>
       <VerifyWithZKPassport
         mint
         policyId={policyId}
@@ -37,6 +37,6 @@ export function ZkPassportVerifyButton({
         style={{ variant: 'outline', label: t('toucan.kyc.verifyIdentityPrivately') }}
         onSuccess={onMinted}
       />
-    </Centered>
+    </RightAligned>
   )
 }
